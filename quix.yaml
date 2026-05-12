@@ -83,13 +83,18 @@ deployments:
     variables:
       - name: input
         inputType: InputTopic
+        description: Topic with raw events (shared input across all dedup filters)
+        required: true
         value: raw-events
       - name: output
         inputType: OutputTopic
+        description: Topic with deduplicated events (no-TTL pipeline)
+        required: true
         value: deduped-events-no-ttl
       - name: VALUE_PADDING_BYTES
         inputType: FreeText
-        value: 200
+        description: Pad each stored value with this many bytes (matches the TTL filter for apples-to-apples comparison).
+        value: 1000
   - name: Dedup Filter (Stable 3.23.6)
     application: dedup-filter-stable
     version: latest
