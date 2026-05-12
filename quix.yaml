@@ -9,11 +9,12 @@ deployments:
   - name: Duplicate Key Generator
     application: duplicate-key-generator
     version: latest
-    deploymentType: Job
+    deploymentType: Service
     resources:
       cpu: 200
       memory: 200
       replicas: 1
+    desiredStatus: Running
     variables:
       - name: output
         inputType: OutputTopic
