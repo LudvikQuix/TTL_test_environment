@@ -16,8 +16,7 @@ STATE_SIZE_LOG_INTERVAL = int(os.environ.get("STATE_SIZE_LOG_INTERVAL", "10"))
 VALUE_PADDING_BYTES = int(os.environ.get("VALUE_PADDING_BYTES", "200"))
 
 # Aggressive RocksDB compaction settings so TTL-driven reclaim is visible in
-# a short test window. Defaults are 64 MB memtable / 64 MB SST; lowering both
-# makes memtable flushes and L0->L1 compactions trigger far sooner.
+# a short test window. Defaults are 64 MB memtable / 64 MB SST.
 _ROCKSDB_OPTS = RocksDBOptions(
     write_buffer_size=int(os.environ.get("ROCKSDB_WRITE_BUFFER_SIZE", str(4 * 1024 * 1024))),
     target_file_size_base=int(os.environ.get("ROCKSDB_TARGET_FILE_SIZE_BASE", str(2 * 1024 * 1024))),
@@ -26,13 +25,10 @@ _ROCKSDB_OPTS = RocksDBOptions(
 
 _PADDING = "x" * VALUE_PADDING_BYTES
 
-_counts = {
-    "forwarded_fresh": 0,
-    "forwarded_expired": 0,
-    "forwarded_toggle": 0,
-    "suppressed": 0,
-}
-_seen_orders = set()
+# Mirror of the *logical* state: order_id -> wall-clock expiry seconds.
+# Pruned in the periodic logger; used to report the live entry count
+# independently of RocksDB compaction lag.
+_live: dict = {}
 
 
 def _dir_size_bytes(path: str) -> int:
@@ -46,17 +42,37 @@ def _dir_size_bytes(path: str) -> int:
     return total
 
 
+def _rocksdb_num_keys() -> int:
+    """Sum 'rocksdb.estimate-num-keys' across every open state partition.
+
+    Includes tombstones / not-yet-compacted entries, so it can be larger than
+    the logical live count and will visibly drop after a compaction.
+    """
+    try:
+        total = 0
+        for store in app._state_manager.stores.values():
+            for partition in store.partitions.values():
+                n = partition._db.property_int_value("rocksdb.estimate-num-keys")
+                if n is not None:
+                    total += int(n)
+        return total
+    except Exception:
+        return -1
+
+
 def _periodic_status_logger():
     while True:
         time.sleep(STATE_SIZE_LOG_INTERVAL)
+        now = time.time()
+        for k in list(_live.keys()):
+            exp = _live.get(k)
+            if exp is not None and exp <= now:
+                _live.pop(k, None)
         size = _dir_size_bytes(STATE_DIR)
+        rocks_keys = _rocksdb_num_keys()
         print(
             f"[STATE-SIZE] bytes={size} ({size/1024:.1f} KiB) "
-            f"forwarded_fresh={_counts['forwarded_fresh']} "
-            f"forwarded_expired={_counts['forwarded_expired']} "
-            f"forwarded_toggle={_counts['forwarded_toggle']} "
-            f"suppressed={_counts['suppressed']} "
-            f"orders_seen={len(_seen_orders)}",
+            f"live_entries={len(_live)} rocksdb_keys={rocks_keys}",
             flush=True,
         )
 
@@ -85,7 +101,6 @@ def dedup_filter(value, key, timestamp, headers, state):
     stored_status = stored["status"] if stored else None
 
     if stored_status == new_status:
-        _counts["suppressed"] += 1
         return False
 
     state.set(
@@ -93,15 +108,7 @@ def dedup_filter(value, key, timestamp, headers, state):
         {"status": new_status, "pad": _PADDING},
         ttl=timedelta(seconds=STATE_TTL_SECONDS),
     )
-
-    if stored_status is None:
-        if order_id in _seen_orders:
-            _counts["forwarded_expired"] += 1
-        else:
-            _counts["forwarded_fresh"] += 1
-            _seen_orders.add(order_id)
-    else:
-        _counts["forwarded_toggle"] += 1
+    _live[order_id] = time.time() + STATE_TTL_SECONDS
     return True
 
 
