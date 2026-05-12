@@ -13,7 +13,3 @@ dist/
 .ruff_cache/
 .env
 scripts/
-
-scripts/
-=======
->>>>>>> Stashed changes
