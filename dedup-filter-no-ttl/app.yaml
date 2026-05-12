@@ -1,4 +1,4 @@
-name: Dedup Filter (No TTL)
+name: Dedup Filter No TTL
 language: python
 variables:
   - name: input

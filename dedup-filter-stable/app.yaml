@@ -1,4 +1,4 @@
-name: Dedup Filter (Stable 3.23.6)
+name: Dedup Filter Stable 3-23-6
 language: python
 variables:
   - name: input
