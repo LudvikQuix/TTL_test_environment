@@ -106,7 +106,3 @@ topics:
     configuration:
       partitions: 2
       retentionInMinutes: 60
-  - name: deduped-events-stable
-    configuration:
-      partitions: 2
-      retentionInMinutes: 60
