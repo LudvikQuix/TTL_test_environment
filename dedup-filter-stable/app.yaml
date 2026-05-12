@@ -1,4 +1,4 @@
-name: Dedup Filter (No TTL)
+name: Dedup Filter (Stable 3.23.6)
 language: python
 variables:
   - name: input
@@ -8,8 +8,8 @@ variables:
     required: true
   - name: output
     inputType: OutputTopic
-    description: Topic with deduplicated events (no-TTL pipeline)
-    defaultValue: deduped-events-no-ttl
+    description: Topic with deduplicated events (stable-baseline pipeline)
+    defaultValue: deduped-events-stable
     required: true
 dockerfile: build/dockerfile
 runEntryPoint: main.py

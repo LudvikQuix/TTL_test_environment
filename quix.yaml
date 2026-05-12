@@ -9,7 +9,7 @@ deployments:
   - name: Duplicate Key Generator
     application: duplicate-key-generator
     version: latest
-    deploymentType: Service
+    deploymentType: Job
     resources:
       cpu: 200
       memory: 200
@@ -21,6 +21,15 @@ deployments:
         description: Topic to produce duplicate-key messages to
         required: true
         value: raw-events
+      - name: KEY_SPACE
+        inputType: FreeText
+        value: 1000000
+      - name: MESSAGE_COUNT
+        inputType: FreeText
+        value: 600
+      - name: SLEEP_SECONDS
+        inputType: FreeText
+        value: 0.1
   - name: Dedup Filter
     application: dedup-filter
     version: latest
@@ -42,7 +51,45 @@ deployments:
         value: deduped-events
       - name: STATE_TTL_SECONDS
         inputType: FreeText
-        value: 30
+        value: 10
+  - name: Dedup Filter (No TTL)
+    application: dedup-filter-no-ttl
+    version: latest
+    deploymentType: Service
+    resources:
+      cpu: 200
+      memory: 500
+      replicas: 1
+    state:
+      enabled: true
+      size: 1
+    desiredStatus: Running
+    variables:
+      - name: input
+        inputType: InputTopic
+        value: raw-events
+      - name: output
+        inputType: OutputTopic
+        value: deduped-events-no-ttl
+  - name: Dedup Filter (Stable 3.23.6)
+    application: dedup-filter-stable
+    version: latest
+    deploymentType: Service
+    resources:
+      cpu: 200
+      memory: 500
+      replicas: 1
+    state:
+      enabled: true
+      size: 1
+    desiredStatus: Running
+    variables:
+      - name: input
+        inputType: InputTopic
+        value: raw-events
+      - name: output
+        inputType: OutputTopic
+        value: deduped-events-stable
 
 # This section describes the Topics of the data pipeline
 topics:
@@ -51,6 +98,14 @@ topics:
       partitions: 2
       retentionInMinutes: 60
   - name: deduped-events
+    configuration:
+      partitions: 2
+      retentionInMinutes: 60
+  - name: deduped-events-no-ttl
+    configuration:
+      partitions: 2
+      retentionInMinutes: 60
+  - name: deduped-events-stable
     configuration:
       partitions: 2
       retentionInMinutes: 60
