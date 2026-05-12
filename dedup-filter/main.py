@@ -42,7 +42,7 @@ def _periodic_status_logger():
 
 threading.Thread(target=_periodic_status_logger, daemon=True).start()
 
-app = Application(consumer_group="dedup-filter-v2", state_dir=STATE_DIR)
+app = Application(consumer_group="dedup-filter-v3", state_dir=STATE_DIR)
 input_topic = app.topic(os.environ["input"], value_deserializer="json")
 output_topic = app.topic(os.environ["output"], value_serializer="json")
 
