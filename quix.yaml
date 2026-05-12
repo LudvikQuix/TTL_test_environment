@@ -112,3 +112,4 @@ topics:
   - name: raw-events
   - name: deduped-events
   - name: deduped-events-no-ttl
+  - name: deduped-events-stable
