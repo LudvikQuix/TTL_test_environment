@@ -1,0 +1,11 @@
+name: Duplicate Key Generator
+language: python
+variables:
+  - name: output
+    inputType: OutputTopic
+    description: Topic to produce duplicate-key messages to
+    defaultValue: raw-events
+    required: true
+dockerfile: build/dockerfile
+runEntryPoint: main.py
+defaultFile: main.py

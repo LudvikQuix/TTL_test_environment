@@ -1,0 +1,50 @@
+metadata:
+  version: 1.0
+
+deployments:
+  - name: Duplicate Key Generator
+    application: duplicate-key-generator
+    deploymentType: Service
+    version: latest
+    desiredStatus: Running
+    resources:
+      cpu: 200
+      memory: 200
+      replicas: 1
+    variables:
+      - name: output
+        inputType: OutputTopic
+        value: raw-events
+
+  - name: Dedup Filter
+    application: dedup-filter
+    deploymentType: Service
+    version: latest
+    desiredStatus: Running
+    resources:
+      cpu: 200
+      memory: 500
+      replicas: 1
+    state:
+      enabled: true
+      size: 1
+    variables:
+      - name: input
+        inputType: InputTopic
+        value: raw-events
+      - name: output
+        inputType: OutputTopic
+        value: deduped-events
+      - name: STATE_TTL_SECONDS
+        inputType: FreeText
+        value: "30"
+
+topics:
+  - name: raw-events
+    configuration:
+      partitions: 2
+      retentionInMinutes: 60
+  - name: deduped-events
+    configuration:
+      partitions: 2
+      retentionInMinutes: 60

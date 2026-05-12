@@ -1,0 +1,21 @@
+name: Dedup Filter
+language: python
+variables:
+  - name: input
+    inputType: InputTopic
+    description: Topic with raw events (may contain duplicate keys)
+    defaultValue: raw-events
+    required: true
+  - name: output
+    inputType: OutputTopic
+    description: Topic with deduplicated events
+    defaultValue: deduped-events
+    required: true
+  - name: STATE_TTL_SECONDS
+    inputType: FreeText
+    description: TTL for seen-key state in seconds (default 30s for testing)
+    defaultValue: "30"
+    required: false
+dockerfile: build/dockerfile
+runEntryPoint: main.py
+defaultFile: main.py
