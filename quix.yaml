@@ -100,3 +100,6 @@ deployments:
         inputType: FreeText
         value: 200
 
+# This section describes the Topics of the data pipeline
+topics:
+  - name: raw-events
