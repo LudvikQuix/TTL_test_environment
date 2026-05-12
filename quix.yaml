@@ -111,3 +111,4 @@ deployments:
 topics:
   - name: raw-events
   - name: deduped-events
+  - name: deduped-events-no-ttl
