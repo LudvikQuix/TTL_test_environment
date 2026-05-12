@@ -48,20 +48,26 @@ deployments:
     state:
       enabled: true
       size: 1
-    desiredStatus: Running
+    desiredStatus: Stopped
     variables:
       - name: input
         inputType: InputTopic
+        description: Topic with raw events (may contain duplicate keys)
+        required: true
         value: raw-events
       - name: output
         inputType: OutputTopic
+        description: Topic with deduplicated events
+        required: true
         value: deduped-events
       - name: STATE_TTL_SECONDS
         inputType: FreeText
+        description: TTL for seen-key state in seconds
         value: 3
       - name: VALUE_PADDING_BYTES
         inputType: FreeText
-        value: 200
+        description: Pad each stored value with this many bytes so TTL timestamp overhead is small relative to entry size.
+        value: 1000
   - name: Dedup Filter (No TTL)
     application: dedup-filter-no-ttl
     version: latest
@@ -73,7 +79,7 @@ deployments:
     state:
       enabled: true
       size: 1
-    desiredStatus: Running
+    desiredStatus: Stopped
     variables:
       - name: input
         inputType: InputTopic
@@ -95,7 +101,7 @@ deployments:
     state:
       enabled: true
       size: 1
-    desiredStatus: Running
+    desiredStatus: Stopped
     variables:
       - name: input
         inputType: InputTopic
@@ -114,7 +120,6 @@ deployments:
       cpu: 200
       memory: 200
       replicas: 1
-    desiredStatus: Stopped
     variables:
       - name: output
         inputType: OutputTopic
