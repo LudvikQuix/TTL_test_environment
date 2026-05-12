@@ -11,6 +11,11 @@ variables:
     description: Topic with deduplicated events (no-TTL pipeline)
     defaultValue: deduped-events-no-ttl
     required: true
+  - name: VALUE_PADDING_BYTES
+    inputType: FreeText
+    description: Pad each stored value with this many bytes (matches the TTL filter for apples-to-apples comparison).
+    defaultValue: "200"
+    required: false
 dockerfile: build/dockerfile
 runEntryPoint: main.py
 defaultFile: main.py

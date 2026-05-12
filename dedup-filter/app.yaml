@@ -13,8 +13,13 @@ variables:
     required: true
   - name: STATE_TTL_SECONDS
     inputType: FreeText
-    description: TTL for seen-key state in seconds (default 10s for testing)
-    defaultValue: "10"
+    description: TTL for seen-key state in seconds
+    defaultValue: "3"
+    required: false
+  - name: VALUE_PADDING_BYTES
+    inputType: FreeText
+    description: Pad each stored value with this many bytes so TTL timestamp overhead is small relative to entry size.
+    defaultValue: "200"
     required: false
 dockerfile: build/dockerfile
 runEntryPoint: main.py

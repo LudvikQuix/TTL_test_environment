@@ -10,6 +10,9 @@ from quixstreams import Application
 
 STATE_DIR = os.environ.get("STATE_DIR", "state")
 STATE_SIZE_LOG_INTERVAL = int(os.environ.get("STATE_SIZE_LOG_INTERVAL", "10"))
+VALUE_PADDING_BYTES = int(os.environ.get("VALUE_PADDING_BYTES", "200"))
+
+_PADDING = "x" * VALUE_PADDING_BYTES
 
 _counts = {"forwarded_fresh": 0, "forwarded_toggle": 0, "suppressed": 0}
 
@@ -40,27 +43,26 @@ def _periodic_status_logger():
 
 threading.Thread(target=_periodic_status_logger, daemon=True).start()
 
-app = Application(consumer_group="dedup-filter-no-ttl-v3", state_dir=STATE_DIR)
+app = Application(consumer_group="dedup-filter-no-ttl-v4", state_dir=STATE_DIR)
 input_topic = app.topic(os.environ["input"], value_deserializer="json")
 output_topic = app.topic(os.environ["output"], value_serializer="json")
 
 sdf = app.dataframe(input_topic)
 
-# Re-key from "<order_id>-<STATUS>" down to "<order_id>" so per-key state is
-# scoped per order, not per (order, status).
 sdf = sdf.group_by("order_id", name="by_order")
 
 
 def dedup_filter(value, key, timestamp, headers, state):
     new_status = value["status"]
-    stored = state.get("last_status")
+    stored = state.get("entry")
+    stored_status = stored["status"] if stored else None
 
-    if stored == new_status:
+    if stored_status == new_status:
         _counts["suppressed"] += 1
         return False
 
-    state.set("last_status", new_status)  # no TTL - state grows forever
-    if stored is None:
+    state.set("entry", {"status": new_status, "pad": _PADDING})  # no TTL
+    if stored_status is None:
         _counts["forwarded_fresh"] += 1
     else:
         _counts["forwarded_toggle"] += 1

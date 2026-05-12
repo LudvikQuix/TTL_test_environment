@@ -9,11 +9,20 @@ load_dotenv()
 
 from quixstreams import Application
 
-STATE_TTL_SECONDS = int(os.environ.get("STATE_TTL_SECONDS", "10"))
+STATE_TTL_SECONDS = int(os.environ.get("STATE_TTL_SECONDS", "3"))
 STATE_DIR = os.environ.get("STATE_DIR", "state")
 STATE_SIZE_LOG_INTERVAL = int(os.environ.get("STATE_SIZE_LOG_INTERVAL", "10"))
+VALUE_PADDING_BYTES = int(os.environ.get("VALUE_PADDING_BYTES", "200"))
 
-_counts = {"forwarded_fresh": 0, "forwarded_toggle": 0, "suppressed": 0}
+_PADDING = "x" * VALUE_PADDING_BYTES
+
+_counts = {
+    "forwarded_fresh": 0,
+    "forwarded_expired": 0,
+    "forwarded_toggle": 0,
+    "suppressed": 0,
+}
+_seen_orders = set()
 
 
 def _dir_size_bytes(path: str) -> int:
@@ -34,37 +43,49 @@ def _periodic_status_logger():
         print(
             f"[STATE-SIZE] bytes={size} ({size/1024:.1f} KiB) "
             f"forwarded_fresh={_counts['forwarded_fresh']} "
+            f"forwarded_expired={_counts['forwarded_expired']} "
             f"forwarded_toggle={_counts['forwarded_toggle']} "
-            f"suppressed={_counts['suppressed']}",
+            f"suppressed={_counts['suppressed']} "
+            f"orders_seen={len(_seen_orders)}",
             flush=True,
         )
 
 
 threading.Thread(target=_periodic_status_logger, daemon=True).start()
 
-app = Application(consumer_group="dedup-filter-v3", state_dir=STATE_DIR)
+app = Application(consumer_group="dedup-filter-v4", state_dir=STATE_DIR)
 input_topic = app.topic(os.environ["input"], value_deserializer="json")
 output_topic = app.topic(os.environ["output"], value_serializer="json")
 
 sdf = app.dataframe(input_topic)
 
 # Re-key from "<order_id>-<STATUS>" down to "<order_id>" so per-key state is
-# scoped per order, not per (order, status). Without this, ON and OFF would
-# live in separate state namespaces and never see each other.
+# scoped per order, not per (order, status).
 sdf = sdf.group_by("order_id", name="by_order")
 
 
 def dedup_filter(value, key, timestamp, headers, state):
     new_status = value["status"]
-    stored = state.get("last_status")
+    order_id = value["order_id"]
+    stored = state.get("entry")
+    stored_status = stored["status"] if stored else None
 
-    if stored == new_status:
+    if stored_status == new_status:
         _counts["suppressed"] += 1
         return False
 
-    state.set("last_status", new_status, ttl=timedelta(seconds=STATE_TTL_SECONDS))
-    if stored is None:
-        _counts["forwarded_fresh"] += 1
+    state.set(
+        "entry",
+        {"status": new_status, "pad": _PADDING},
+        ttl=timedelta(seconds=STATE_TTL_SECONDS),
+    )
+
+    if stored_status is None:
+        if order_id in _seen_orders:
+            _counts["forwarded_expired"] += 1
+        else:
+            _counts["forwarded_fresh"] += 1
+            _seen_orders.add(order_id)
     else:
         _counts["forwarded_toggle"] += 1
     return True
