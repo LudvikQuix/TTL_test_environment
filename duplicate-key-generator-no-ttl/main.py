@@ -12,14 +12,14 @@ from quixstreams import Application
 app = Application()
 output_topic = app.topic(os.environ["output"], value_serializer="json")
 
-ORDERS = [f"order-{i:03d}" for i in range(1, 11)]  # order-001 .. order-010
+KEY_SPACE = int(os.environ.get("KEY_SPACE", "1000000"))
 STATUSES = ["ON", "OFF"]
 
 
 def main():
     with app.get_producer() as producer:
         while True:
-            order_id = random.choice(ORDERS)
+            order_id = f"order-{random.randint(1, KEY_SPACE):07d}"
             status = random.choice(STATUSES)
             key = f"{order_id}-{status}"
             ts = int(datetime.now(timezone.utc).timestamp() * 1000)
@@ -31,7 +31,7 @@ def main():
             }
             msg = output_topic.serialize(key=key, value=value)
             producer.produce(topic=output_topic.name, key=msg.key, value=msg.value)
-            print(f"[GENERATOR] Produced key={key}", flush=True)
+            print(f"[GENERATOR-NO-TTL] Produced key={key}", flush=True)
             time.sleep(1)
 
 

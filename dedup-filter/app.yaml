@@ -13,8 +13,8 @@ variables:
     required: true
   - name: STATE_TTL_SECONDS
     inputType: FreeText
-    description: TTL for seen-key state in seconds (default 30s for testing)
-    defaultValue: "30"
+    description: TTL for seen-key state in seconds (default 10s for testing)
+    defaultValue: "10"
     required: false
 dockerfile: build/dockerfile
 runEntryPoint: main.py

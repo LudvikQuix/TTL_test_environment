@@ -1,0 +1,16 @@
+name: Dedup Filter (No TTL)
+language: python
+variables:
+  - name: input
+    inputType: InputTopic
+    description: Topic with raw events from the no-TTL generator
+    defaultValue: raw-events-no-ttl
+    required: true
+  - name: output
+    inputType: OutputTopic
+    description: Topic with deduplicated events (no-TTL pipeline)
+    defaultValue: deduped-events-no-ttl
+    required: true
+dockerfile: build/dockerfile
+runEntryPoint: main.py
+defaultFile: main.py
