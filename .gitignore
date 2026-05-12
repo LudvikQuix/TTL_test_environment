@@ -13,7 +13,6 @@ dist/
 .ruff_cache/
 .env
 scripts/
-<<<<<<< Updated upstream
 
 scripts/
 =======
