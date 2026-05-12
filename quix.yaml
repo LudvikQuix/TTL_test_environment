@@ -1,26 +1,30 @@
+# Quix Project Descriptor
+# This file describes the data pipeline and configuration of resources of a Quix Project.
+
 metadata:
   version: 1.0
 
+# This section describes the Deployments of the data pipeline
 deployments:
   - name: Duplicate Key Generator
     application: duplicate-key-generator
-    deploymentType: Service
     version: latest
-    desiredStatus: Running
+    deploymentType: Service
     resources:
       cpu: 200
       memory: 200
       replicas: 1
+    desiredStatus: Stopped
     variables:
       - name: output
         inputType: OutputTopic
+        description: Topic to produce duplicate-key messages to
+        required: true
         value: raw-events
-
   - name: Dedup Filter
     application: dedup-filter
-    deploymentType: Service
     version: latest
-    desiredStatus: Running
+    deploymentType: Service
     resources:
       cpu: 200
       memory: 500
@@ -28,6 +32,7 @@ deployments:
     state:
       enabled: true
       size: 1
+    desiredStatus: Running
     variables:
       - name: input
         inputType: InputTopic
@@ -37,8 +42,9 @@ deployments:
         value: deduped-events
       - name: STATE_TTL_SECONDS
         inputType: FreeText
-        value: "30"
+        value: 30
 
+# This section describes the Topics of the data pipeline
 topics:
   - name: raw-events
     configuration:
