@@ -13,7 +13,7 @@ from quixstreams.state.rocksdb.options import RocksDBOptions
 STATE_TTL_SECONDS = int(os.environ.get("STATE_TTL_SECONDS", "3"))
 STATE_DIR = os.environ.get("STATE_DIR", "state")
 STATE_SIZE_LOG_INTERVAL = int(os.environ.get("STATE_SIZE_LOG_INTERVAL", "10"))
-VALUE_PADDING_BYTES = int(os.environ.get("VALUE_PADDING_BYTES", "200"))
+VALUE_PADDING_BYTES = int(os.environ.get("VALUE_PADDING_BYTES", "800"))
 
 # Aggressive RocksDB compaction settings so TTL-driven reclaim is visible in
 # a short test window. Defaults are 64 MB memtable / 64 MB SST.

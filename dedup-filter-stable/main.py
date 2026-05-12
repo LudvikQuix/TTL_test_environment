@@ -11,7 +11,7 @@ from quixstreams.state.rocksdb.options import RocksDBOptions
 
 STATE_DIR = os.environ.get("STATE_DIR", "state")
 STATE_SIZE_LOG_INTERVAL = int(os.environ.get("STATE_SIZE_LOG_INTERVAL", "10"))
-VALUE_PADDING_BYTES = int(os.environ.get("VALUE_PADDING_BYTES", "200"))
+VALUE_PADDING_BYTES = int(os.environ.get("VALUE_PADDING_BYTES", "800"))
 
 _ROCKSDB_OPTS = RocksDBOptions(
     write_buffer_size=int(os.environ.get("ROCKSDB_WRITE_BUFFER_SIZE", str(4 * 1024 * 1024))),
