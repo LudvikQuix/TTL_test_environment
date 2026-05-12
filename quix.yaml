@@ -96,16 +96,16 @@ topics:
   - name: raw-events
     configuration:
       partitions: 2
-      retentionInMinutes: 60
+      retentionInMinutes: 1
   - name: deduped-events
     configuration:
       partitions: 2
-      retentionInMinutes: 60
+      retentionInMinutes: 1
   - name: deduped-events-no-ttl
     configuration:
       partitions: 2
-      retentionInMinutes: 60
+      retentionInMinutes: 1
   - name: deduped-events-stable
     configuration:
       partitions: 2
-      retentionInMinutes: 60
+      retentionInMinutes: 1
