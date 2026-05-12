@@ -14,7 +14,7 @@ deployments:
       cpu: 200
       memory: 200
       replicas: 1
-    desiredStatus: Running
+    desiredStatus: Stopped
     variables:
       - name: output
         inputType: OutputTopic
@@ -41,7 +41,7 @@ deployments:
     state:
       enabled: true
       size: 1
-    desiredStatus: Running
+    desiredStatus: Stopped
     variables:
       - name: input
         inputType: InputTopic
@@ -66,7 +66,7 @@ deployments:
     state:
       enabled: true
       size: 1
-    desiredStatus: Running
+    desiredStatus: Stopped
     variables:
       - name: input
         inputType: InputTopic
@@ -88,7 +88,7 @@ deployments:
     state:
       enabled: true
       size: 1
-    desiredStatus: Running
+    desiredStatus: Stopped
     variables:
       - name: input
         inputType: InputTopic
@@ -103,10 +103,6 @@ deployments:
 # This section describes the Topics of the data pipeline
 topics:
   - name: raw-events
-    configuration:
-      partitions: 2
-      retentionInMinutes: 60
-  - name: deduped-events
     configuration:
       partitions: 2
       retentionInMinutes: 60
