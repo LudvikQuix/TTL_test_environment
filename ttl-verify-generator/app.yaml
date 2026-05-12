@@ -1,0 +1,26 @@
+name: TTL Verify Generator
+language: python
+variables:
+  - name: output
+    inputType: OutputTopic
+    description: Topic both ttl-verify dedupers read from
+    defaultValue: ttl-verify-input
+    required: true
+  - name: KEY_COUNT
+    inputType: FreeText
+    description: Unique keys per batch
+    defaultValue: "3"
+    required: false
+  - name: WAIT_SECONDS
+    inputType: FreeText
+    description: Seconds between batch 1 and batch 2. Must EXCEED the feature deduper's STATE_TTL_SECONDS to see divergence.
+    defaultValue: "10"
+    required: false
+  - name: STATUS
+    inputType: FreeText
+    description: Status field value (same across both batches so dedup logic sees a duplicate)
+    defaultValue: "ON"
+    required: false
+dockerfile: build/dockerfile
+runEntryPoint: main.py
+defaultFile: main.py
