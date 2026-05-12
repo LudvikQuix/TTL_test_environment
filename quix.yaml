@@ -106,6 +106,75 @@ deployments:
       - name: VALUE_PADDING_BYTES
         inputType: FreeText
         value: 200
+  - name: TTL Verify Generator
+    application: ttl-verify-generator
+    version: latest
+    deploymentType: Job
+    resources:
+      cpu: 200
+      memory: 200
+      replicas: 1
+    desiredStatus: Stopped
+    variables:
+      - name: output
+        inputType: OutputTopic
+        description: Topic both ttl-verify dedupers read from
+        required: true
+        value: ttl-verify-input
+      - name: KEY_COUNT
+        inputType: FreeText
+        description: Unique keys per batch
+        value: 3
+      - name: WAIT_SECONDS
+        inputType: FreeText
+        description: Seconds between batch 1 and batch 2. Must EXCEED the feature deduper's STATE_TTL_SECONDS to see divergence.
+        value: 10
+      - name: STATUS
+        inputType: FreeText
+        description: Status field value (same across both batches)
+        value: ON
+  - name: TTL Verify (Feature)
+    application: ttl-verify-feature
+    version: latest
+    deploymentType: Service
+    resources:
+      cpu: 200
+      memory: 500
+      replicas: 1
+    state:
+      enabled: true
+      size: 1
+    desiredStatus: Stopped
+    variables:
+      - name: input
+        inputType: InputTopic
+        value: ttl-verify-input
+      - name: output
+        inputType: OutputTopic
+        value: ttl-verify-feature-out
+      - name: STATE_TTL_SECONDS
+        inputType: FreeText
+        description: Must be SHORTER than generator's WAIT_SECONDS so batch 2 sees expired state
+        value: 5
+  - name: TTL Verify (Stable)
+    application: ttl-verify-stable
+    version: latest
+    deploymentType: Service
+    resources:
+      cpu: 200
+      memory: 500
+      replicas: 1
+    state:
+      enabled: true
+      size: 1
+    desiredStatus: Stopped
+    variables:
+      - name: input
+        inputType: InputTopic
+        value: ttl-verify-input
+      - name: output
+        inputType: OutputTopic
+        value: ttl-verify-stable-out
 
 # This section describes the Topics of the data pipeline
 topics:
@@ -113,3 +182,6 @@ topics:
   - name: deduped-events
   - name: deduped-events-no-ttl
   - name: deduped-events-stable
+  - name: ttl-verify-input
+  - name: ttl-verify-feature-out
+  - name: ttl-verify-stable-out
