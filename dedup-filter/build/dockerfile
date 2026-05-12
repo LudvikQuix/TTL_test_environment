@@ -2,8 +2,7 @@ FROM python:3.11-slim
 ENV PYTHONUNBUFFERED=1
 ENV PYTHONIOENCODING=UTF-8
 WORKDIR /app
-RUN apt-get update && apt-get install -y --no-install-recommends git \
-    && rm -rf /var/lib/apt/lists/*
 COPY --from=git /project .
-RUN find . -name requirements.txt | xargs -I {} pip install -r {}
-ENTRYPOINT ["python3", "dedup-filter/main.py"]
+RUN pip install -r dedup-filter/requirements.txt
+WORKDIR /app/dedup-filter
+ENTRYPOINT ["python3", "main.py"]
