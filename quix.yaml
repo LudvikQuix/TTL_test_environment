@@ -110,13 +110,18 @@ deployments:
     variables:
       - name: input
         inputType: InputTopic
+        description: Topic with raw events (shared input across all dedup filters)
+        required: true
         value: raw-events
       - name: output
         inputType: OutputTopic
+        description: Topic with deduplicated events (stable-baseline pipeline)
+        required: true
         value: deduped-events-stable
       - name: VALUE_PADDING_BYTES
         inputType: FreeText
-        value: 200
+        description: Pad each stored value with this many bytes (matches the TTL filter for apples-to-apples comparison).
+        value: 1000
   - name: TTL Verify Generator
     application: ttl-verify-generator
     version: latest
