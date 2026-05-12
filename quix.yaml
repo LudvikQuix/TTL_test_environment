@@ -48,7 +48,7 @@ deployments:
     state:
       enabled: true
       size: 1
-    desiredStatus: Stopped
+    desiredStatus: Running
     variables:
       - name: input
         inputType: InputTopic
@@ -73,7 +73,7 @@ deployments:
     state:
       enabled: true
       size: 1
-    desiredStatus: Stopped
+    desiredStatus: Running
     variables:
       - name: input
         inputType: InputTopic
@@ -95,7 +95,7 @@ deployments:
     state:
       enabled: true
       size: 1
-    desiredStatus: Stopped
+    desiredStatus: Running
     variables:
       - name: input
         inputType: InputTopic
@@ -110,3 +110,4 @@ deployments:
 # This section describes the Topics of the data pipeline
 topics:
   - name: raw-events
+  - name: deduped-events
