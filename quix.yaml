@@ -100,9 +100,3 @@ deployments:
         inputType: FreeText
         value: 200
 
-# This section describes the Topics of the data pipeline
-topics:
-  - name: raw-events
-    configuration:
-      partitions: 2
-      retentionInMinutes: 60
