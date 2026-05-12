@@ -26,10 +26,10 @@ deployments:
         value: 1000000
       - name: MESSAGE_COUNT
         inputType: FreeText
-        value: 600
+        value: 0
       - name: SLEEP_SECONDS
         inputType: FreeText
-        value: 0.1
+        value: 0.01
   - name: Dedup Filter
     application: dedup-filter
     version: latest

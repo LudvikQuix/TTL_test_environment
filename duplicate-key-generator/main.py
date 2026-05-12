@@ -13,26 +13,30 @@ app = Application()
 output_topic = app.topic(os.environ["output"], value_serializer="json")
 
 KEY_SPACE = int(os.environ.get("KEY_SPACE", "1000000"))
-MESSAGE_COUNT = int(os.environ.get("MESSAGE_COUNT", "600"))
-SLEEP_SECONDS = float(os.environ.get("SLEEP_SECONDS", "0.1"))
-SEED = os.environ.get("SEED")  # optional - set to fix the random sequence
+# MESSAGE_COUNT=0 means run forever (Service mode). >0 produces N and exits (Job mode).
+MESSAGE_COUNT = int(os.environ.get("MESSAGE_COUNT", "0"))
+SLEEP_SECONDS = float(os.environ.get("SLEEP_SECONDS", "0.01"))
+SEED = os.environ.get("SEED")  # optional - fixes the random sequence
 
 STATUSES = ["ON", "OFF"]
 
 
 def main():
-    if SEED is not None:
+    if SEED:
         random.seed(int(SEED))
         print(f"[GENERATOR] Using deterministic seed={SEED}", flush=True)
 
+    mode = "infinite" if MESSAGE_COUNT == 0 else f"{MESSAGE_COUNT} messages"
     print(
-        f"[GENERATOR] Producing {MESSAGE_COUNT} messages "
+        f"[GENERATOR] Producing {mode} "
         f"(key_space=1..{KEY_SPACE}, sleep={SLEEP_SECONDS}s)",
         flush=True,
     )
 
+    i = 0
     with app.get_producer() as producer:
-        for i in range(1, MESSAGE_COUNT + 1):
+        while MESSAGE_COUNT == 0 or i < MESSAGE_COUNT:
+            i += 1
             order_id = f"order-{random.randint(1, KEY_SPACE):07d}"
             status = random.choice(STATUSES)
             key = f"{order_id}-{status}"
@@ -45,10 +49,11 @@ def main():
             }
             msg = output_topic.serialize(key=key, value=value)
             producer.produce(topic=output_topic.name, key=msg.key, value=msg.value)
-            print(f"[GENERATOR] {i}/{MESSAGE_COUNT} key={key}", flush=True)
+            if i % 100 == 0 or MESSAGE_COUNT != 0:
+                print(f"[GENERATOR] {i} key={key}", flush=True)
             time.sleep(SLEEP_SECONDS)
 
-    print(f"[GENERATOR] Done. Produced {MESSAGE_COUNT} messages.", flush=True)
+    print(f"[GENERATOR] Done. Produced {i} messages.", flush=True)
 
 
 if __name__ == "__main__":

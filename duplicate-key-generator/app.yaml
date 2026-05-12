@@ -13,17 +13,17 @@ variables:
     required: false
   - name: MESSAGE_COUNT
     inputType: FreeText
-    description: Total number of messages to produce, then exit. Makes the run deterministic in length.
-    defaultValue: "600"
+    description: Total messages to produce, then exit. 0 = run forever (Service mode).
+    defaultValue: "0"
     required: false
   - name: SLEEP_SECONDS
     inputType: FreeText
-    description: Delay between messages in seconds. Default 0.1 = ~10 msg/s.
-    defaultValue: "0.1"
+    description: Delay between messages in seconds. Default 0.01 = ~100 msg/s.
+    defaultValue: "0.01"
     required: false
   - name: SEED
     inputType: FreeText
-    description: Optional integer seed for random. Set to make the sequence reproducible across runs.
+    description: Optional integer seed for random. Set to make the sequence reproducible.
     defaultValue: ""
     required: false
 dockerfile: build/dockerfile
