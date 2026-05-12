@@ -11,6 +11,8 @@ from quixstreams import Application
 STATE_DIR = os.environ.get("STATE_DIR", "state")
 STATE_SIZE_LOG_INTERVAL = int(os.environ.get("STATE_SIZE_LOG_INTERVAL", "10"))
 
+_counts = {"forwarded_fresh": 0, "forwarded_toggle": 0, "suppressed": 0}
+
 
 def _dir_size_bytes(path: str) -> int:
     total = 0
@@ -23,14 +25,20 @@ def _dir_size_bytes(path: str) -> int:
     return total
 
 
-def _state_size_logger():
+def _periodic_status_logger():
     while True:
         time.sleep(STATE_SIZE_LOG_INTERVAL)
         size = _dir_size_bytes(STATE_DIR)
-        print(f"[STATE-SIZE-STABLE] dir={STATE_DIR} bytes={size} ({size/1024:.1f} KiB)", flush=True)
+        print(
+            f"[STATE-SIZE-STABLE] bytes={size} ({size/1024:.1f} KiB) "
+            f"forwarded_fresh={_counts['forwarded_fresh']} "
+            f"forwarded_toggle={_counts['forwarded_toggle']} "
+            f"suppressed={_counts['suppressed']}",
+            flush=True,
+        )
 
 
-threading.Thread(target=_state_size_logger, daemon=True).start()
+threading.Thread(target=_periodic_status_logger, daemon=True).start()
 
 app = Application(consumer_group="dedup-filter-stable-v2", state_dir=STATE_DIR)
 input_topic = app.topic(os.environ["input"], value_deserializer="json")
@@ -44,22 +52,18 @@ sdf = sdf.group_by("order_id", name="by_order")
 
 
 def dedup_filter(value, key, timestamp, headers, state):
-    """
-    Toggle-detection dedup running on stable quixstreams 3.23.6 (no TTL feature
-    available). Provides a baseline to compare against the TTL-branch builds.
-    """
     new_status = value["status"]
     stored = state.get("last_status")
 
     if stored == new_status:
-        print(f"[DEDUP-STABLE] Suppressed key={key} status={new_status}", flush=True)
+        _counts["suppressed"] += 1
         return False
 
     state.set("last_status", new_status)
     if stored is None:
-        print(f"[DEDUP-STABLE] Forwarded first-seen key={key} status={new_status}", flush=True)
+        _counts["forwarded_fresh"] += 1
     else:
-        print(f"[DEDUP-STABLE] Forwarded toggle key={key} {stored}->{new_status}", flush=True)
+        _counts["forwarded_toggle"] += 1
     return True
 
 

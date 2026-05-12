@@ -13,6 +13,8 @@ STATE_TTL_SECONDS = int(os.environ.get("STATE_TTL_SECONDS", "10"))
 STATE_DIR = os.environ.get("STATE_DIR", "state")
 STATE_SIZE_LOG_INTERVAL = int(os.environ.get("STATE_SIZE_LOG_INTERVAL", "10"))
 
+_counts = {"forwarded_fresh": 0, "forwarded_toggle": 0, "suppressed": 0}
+
 
 def _dir_size_bytes(path: str) -> int:
     total = 0
@@ -25,14 +27,20 @@ def _dir_size_bytes(path: str) -> int:
     return total
 
 
-def _state_size_logger():
+def _periodic_status_logger():
     while True:
         time.sleep(STATE_SIZE_LOG_INTERVAL)
         size = _dir_size_bytes(STATE_DIR)
-        print(f"[STATE-SIZE] dir={STATE_DIR} bytes={size} ({size/1024:.1f} KiB)", flush=True)
+        print(
+            f"[STATE-SIZE] bytes={size} ({size/1024:.1f} KiB) "
+            f"forwarded_fresh={_counts['forwarded_fresh']} "
+            f"forwarded_toggle={_counts['forwarded_toggle']} "
+            f"suppressed={_counts['suppressed']}",
+            flush=True,
+        )
 
 
-threading.Thread(target=_state_size_logger, daemon=True).start()
+threading.Thread(target=_periodic_status_logger, daemon=True).start()
 
 app = Application(consumer_group="dedup-filter-v2", state_dir=STATE_DIR)
 input_topic = app.topic(os.environ["input"], value_deserializer="json")
@@ -47,22 +55,18 @@ sdf = sdf.group_by("order_id", name="by_order")
 
 
 def dedup_filter(value, key, timestamp, headers, state):
-    """
-    Forward only when status changes vs. the last seen status for this order,
-    OR when no stored status exists (first sighting or TTL-expired entry).
-    """
     new_status = value["status"]
     stored = state.get("last_status")
 
     if stored == new_status:
-        print(f"[DEDUP] Suppressed key={key} status={new_status}", flush=True)
+        _counts["suppressed"] += 1
         return False
 
     state.set("last_status", new_status, ttl=timedelta(seconds=STATE_TTL_SECONDS))
     if stored is None:
-        print(f"[DEDUP] Forwarded fresh/expired key={key} status={new_status}", flush=True)
+        _counts["forwarded_fresh"] += 1
     else:
-        print(f"[DEDUP] Forwarded toggle key={key} {stored}->{new_status}", flush=True)
+        _counts["forwarded_toggle"] += 1
     return True
 
 

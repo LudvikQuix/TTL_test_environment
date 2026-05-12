@@ -11,6 +11,8 @@ from quixstreams import Application
 STATE_DIR = os.environ.get("STATE_DIR", "state")
 STATE_SIZE_LOG_INTERVAL = int(os.environ.get("STATE_SIZE_LOG_INTERVAL", "10"))
 
+_counts = {"forwarded_fresh": 0, "forwarded_toggle": 0, "suppressed": 0}
+
 
 def _dir_size_bytes(path: str) -> int:
     total = 0
@@ -23,14 +25,20 @@ def _dir_size_bytes(path: str) -> int:
     return total
 
 
-def _state_size_logger():
+def _periodic_status_logger():
     while True:
         time.sleep(STATE_SIZE_LOG_INTERVAL)
         size = _dir_size_bytes(STATE_DIR)
-        print(f"[STATE-SIZE-NO-TTL] dir={STATE_DIR} bytes={size} ({size/1024:.1f} KiB)", flush=True)
+        print(
+            f"[STATE-SIZE-NO-TTL] bytes={size} ({size/1024:.1f} KiB) "
+            f"forwarded_fresh={_counts['forwarded_fresh']} "
+            f"forwarded_toggle={_counts['forwarded_toggle']} "
+            f"suppressed={_counts['suppressed']}",
+            flush=True,
+        )
 
 
-threading.Thread(target=_state_size_logger, daemon=True).start()
+threading.Thread(target=_periodic_status_logger, daemon=True).start()
 
 app = Application(consumer_group="dedup-filter-no-ttl-v2", state_dir=STATE_DIR)
 input_topic = app.topic(os.environ["input"], value_deserializer="json")
@@ -44,23 +52,18 @@ sdf = sdf.group_by("order_id", name="by_order")
 
 
 def dedup_filter(value, key, timestamp, headers, state):
-    """
-    Same toggle-detection logic as dedup-filter, but state entries have NO TTL.
-    Entries persist forever, so RocksDB state will grow unbounded as new
-    order IDs are seen.
-    """
     new_status = value["status"]
     stored = state.get("last_status")
 
     if stored == new_status:
-        print(f"[DEDUP-NO-TTL] Suppressed key={key} status={new_status}", flush=True)
+        _counts["suppressed"] += 1
         return False
 
     state.set("last_status", new_status)  # no TTL - state grows forever
     if stored is None:
-        print(f"[DEDUP-NO-TTL] Forwarded first-seen key={key} status={new_status}", flush=True)
+        _counts["forwarded_fresh"] += 1
     else:
-        print(f"[DEDUP-NO-TTL] Forwarded toggle key={key} {stored}->{new_status}", flush=True)
+        _counts["forwarded_toggle"] += 1
     return True
 
 
