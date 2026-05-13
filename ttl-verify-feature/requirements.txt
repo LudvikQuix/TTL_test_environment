@@ -1,2 +1,2 @@
-quixstreams @ git+https://github.com/quixio/quix-streams.git@feature/sc-72538/adding-ttl-to-state
+quixstreams==4.0.0a6
 python-dotenv
