@@ -11,41 +11,49 @@ from quixstreams import Application
 app = Application()
 output_topic = app.topic(os.environ["output"], value_serializer="json")
 
-KEY_COUNT = int(os.environ.get("KEY_COUNT", "3"))
-WAIT_SECONDS = float(os.environ.get("WAIT_SECONDS", "10"))
-STATUS = os.environ.get("STATUS", "ON")
+# Must EXCEED the feature deduper's STATE_TTL_SECONDS so the cached entry expires.
+TTL_WAIT_SECONDS = float(os.environ.get("TTL_WAIT_SECONDS", "7"))
+QUICK = 0.2  # gap between same-order events that must stay within TTL
+
+# Each scenario: (order_id, [(status, sleep_after_seconds), ...])
+# Expected feature-deduper output (with STATE_TTL_SECONDS=5):
+#   order-001: ON, ON, ON, ON, ON                       -> 1 PASS,  4 BLOCK
+#   order-002: ON, ON, ON, [wait>TTL], ON               -> 2 PASS,  2 BLOCK
+#   order-003: ON, OFF, [wait>TTL], ON                  -> 3 PASS,  0 BLOCK
+SCENARIOS = [
+    ("order-001", [
+        ("ON", QUICK), ("ON", QUICK), ("ON", QUICK), ("ON", QUICK), ("ON", 0.0),
+    ]),
+    ("order-002", [
+        ("ON", QUICK), ("ON", QUICK), ("ON", TTL_WAIT_SECONDS),
+        ("ON", 0.0),
+    ]),
+    ("order-003", [
+        ("ON", QUICK), ("OFF", TTL_WAIT_SECONDS),
+        ("ON", 0.0),
+    ]),
+]
 
 
-def _send_batch(producer, batch_num: int) -> None:
-    print(f"[GEN] --- BATCH {batch_num} ---", flush=True)
-    for i in range(1, KEY_COUNT + 1):
-        order_id = f"order-{i:03d}"
-        key = f"{order_id}-{STATUS}"
-        ts = int(datetime.now(timezone.utc).timestamp() * 1000)
-        value = {
-            "order_id": order_id,
-            "status": STATUS,
-            "batch": batch_num,
-            "payload": "ttl-verify",
-            "timestamp": ts,
-        }
-        msg = output_topic.serialize(key=key, value=value)
-        producer.produce(topic=output_topic.name, key=msg.key, value=msg.value)
-        print(f"[GEN] batch={batch_num} key={key}", flush=True)
+def _send(producer, order_id: str, status: str) -> None:
+    key = f"{order_id}-{status}"
+    ts = int(datetime.now(timezone.utc).timestamp() * 1000)
+    value = {"order_id": order_id, "status": status, "timestamp": ts}
+    msg = output_topic.serialize(key=key, value=value)
+    producer.produce(topic=output_topic.name, key=msg.key, value=msg.value)
+    print(f"[GEN] sent key={key}", flush=True)
 
 
 def main():
-    print(
-        f"[GEN] keys={KEY_COUNT} status={STATUS} wait_between_batches={WAIT_SECONDS}s",
-        flush=True,
-    )
+    print(f"[GEN] TTL_WAIT_SECONDS={TTL_WAIT_SECONDS}", flush=True)
     with app.get_producer() as producer:
-        _send_batch(producer, 1)
-        producer.flush()
-        print(f"[GEN] sleeping {WAIT_SECONDS}s...", flush=True)
-        time.sleep(WAIT_SECONDS)
-        _send_batch(producer, 2)
-        producer.flush()
+        for order_id, steps in SCENARIOS:
+            print(f"[GEN] --- {order_id} ---", flush=True)
+            for status, sleep_after in steps:
+                _send(producer, order_id, status)
+                producer.flush()
+                if sleep_after:
+                    time.sleep(sleep_after)
     print("[GEN] done.", flush=True)
 
 

@@ -136,18 +136,10 @@ deployments:
         description: Topic both ttl-verify dedupers read from
         required: true
         value: ttl-verify-input
-      - name: KEY_COUNT
+      - name: TTL_WAIT_SECONDS
         inputType: FreeText
-        description: Unique keys per batch
-        value: 3
-      - name: WAIT_SECONDS
-        inputType: FreeText
-        description: Seconds between batch 1 and batch 2. Must EXCEED the feature deduper's STATE_TTL_SECONDS to see divergence.
-        value: 10
-      - name: STATUS
-        inputType: FreeText
-        description: Status field value (same across both batches)
-        value: ON
+        description: Pause between same-order events that must EXCEED the feature deduper's STATE_TTL_SECONDS so the cached entry expires.
+        value: 7
   - name: TTL Verify (Feature)
     application: ttl-verify-feature
     version: latest

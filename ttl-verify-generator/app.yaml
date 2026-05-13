@@ -6,20 +6,10 @@ variables:
     description: Topic both ttl-verify dedupers read from
     defaultValue: ttl-verify-input
     required: true
-  - name: KEY_COUNT
+  - name: TTL_WAIT_SECONDS
     inputType: FreeText
-    description: Unique keys per batch
-    defaultValue: "3"
-    required: false
-  - name: WAIT_SECONDS
-    inputType: FreeText
-    description: Seconds between batch 1 and batch 2. Must EXCEED the feature deduper's STATE_TTL_SECONDS to see divergence.
-    defaultValue: "10"
-    required: false
-  - name: STATUS
-    inputType: FreeText
-    description: Status field value (same across both batches so dedup logic sees a duplicate)
-    defaultValue: "ON"
+    description: Pause between same-order events that must EXCEED the feature deduper's STATE_TTL_SECONDS so the cached entry expires.
+    defaultValue: "7"
     required: false
 dockerfile: build/dockerfile
 runEntryPoint: main.py
