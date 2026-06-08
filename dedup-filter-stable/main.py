@@ -78,7 +78,6 @@ sdf = sdf.group_by("order_id", name="by_order")
 
 
 def dedup_filter(value, key, timestamp, headers, state):
-    state.empty()
     new_status = value["status"]
     order_id = value["order_id"]
     stored = state.get("entry")
