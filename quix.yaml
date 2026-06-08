@@ -106,7 +106,7 @@ deployments:
     state:
       enabled: true
       size: 1
-      path: /app/state4
+      path: /app/state5
     desiredStatus: Stopped
     variables:
       - name: input
