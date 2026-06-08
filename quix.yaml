@@ -108,7 +108,7 @@ deployments:
         memory: 500
       replicas: 1
     state:
-      enabled: true
+      enabled: false
       size: 1
     desiredStatus: Stopped
     variables:
