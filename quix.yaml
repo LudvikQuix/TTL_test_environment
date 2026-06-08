@@ -106,8 +106,8 @@ deployments:
     state:
       enabled: true
       size: 1
-      path: /app/state3
-    desiredStatus: Running
+      path: /app/state4
+    desiredStatus: Stopped
     variables:
       - name: input
         inputType: InputTopic
