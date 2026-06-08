@@ -11,8 +11,9 @@ deployments:
     version: latest
     deploymentType: Service
     resources:
-      cpu: 200
-      memory: 200
+      limits:
+        cpu: 200
+        memory: 200
       replicas: 1
     desiredStatus: Stopped
     variables:
@@ -42,8 +43,9 @@ deployments:
     version: latest
     deploymentType: Service
     resources:
-      cpu: 200
-      memory: 500
+      limits:
+        cpu: 200
+        memory: 500
       replicas: 1
     state:
       enabled: true
@@ -73,8 +75,9 @@ deployments:
     version: latest
     deploymentType: Service
     resources:
-      cpu: 200
-      memory: 500
+      limits:
+        cpu: 200
+        memory: 500
       replicas: 1
     state:
       enabled: true
@@ -100,8 +103,9 @@ deployments:
     version: latest
     deploymentType: Service
     resources:
-      cpu: 200
-      memory: 500
+      limits:
+        cpu: 200
+        memory: 500
       replicas: 1
     state:
       enabled: true
@@ -127,8 +131,9 @@ deployments:
     version: latest
     deploymentType: Job
     resources:
-      cpu: 200
-      memory: 200
+      limits:
+        cpu: 200
+        memory: 200
       replicas: 1
     variables:
       - name: output
@@ -145,8 +150,9 @@ deployments:
     version: latest
     deploymentType: Service
     resources:
-      cpu: 200
-      memory: 500
+      limits:
+        cpu: 200
+        memory: 500
       replicas: 1
     state:
       enabled: true
@@ -168,8 +174,9 @@ deployments:
     version: latest
     deploymentType: Service
     resources:
-      cpu: 200
-      memory: 500
+      limits:
+        cpu: 200
+        memory: 500
       replicas: 1
     state:
       enabled: true
