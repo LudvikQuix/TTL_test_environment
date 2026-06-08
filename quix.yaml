@@ -14,8 +14,7 @@ deployments:
       limits:
         cpu: 200
         memory: 200
-      replicas: 1
-    desiredStatus: Running
+    desiredStatus: Stopped
     variables:
       - name: output
         inputType: OutputTopic
@@ -46,7 +45,6 @@ deployments:
       limits:
         cpu: 200
         memory: 500
-      replicas: 1
     state:
       enabled: true
       size: 1
@@ -78,7 +76,6 @@ deployments:
       limits:
         cpu: 200
         memory: 500
-      replicas: 1
     state:
       enabled: true
       size: 1
@@ -106,10 +103,10 @@ deployments:
       limits:
         cpu: 200
         memory: 500
-      replicas: 1
     state:
       enabled: true
       size: 1
+      path: /app/state1
     desiredStatus: Stopped
     variables:
       - name: input
@@ -134,7 +131,6 @@ deployments:
       limits:
         cpu: 200
         memory: 200
-      replicas: 1
     variables:
       - name: output
         inputType: OutputTopic
@@ -153,7 +149,6 @@ deployments:
       limits:
         cpu: 200
         memory: 500
-      replicas: 1
     state:
       enabled: true
       size: 1
@@ -177,7 +172,6 @@ deployments:
       limits:
         cpu: 200
         memory: 500
-      replicas: 1
     state:
       enabled: true
       size: 1
