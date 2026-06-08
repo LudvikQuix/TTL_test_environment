@@ -75,6 +75,7 @@ sdf = app.dataframe(input_topic)
 
 sdf = sdf.group_by("order_id", name="by_order")
 
+state.empty()
 
 def dedup_filter(value, key, timestamp, headers, state):
     new_status = value["status"]
