@@ -11,7 +11,7 @@ STATE_TTL_SECONDS = int(os.environ.get("STATE_TTL_SECONDS", "5"))
 STATE_DIR = os.environ.get("STATE_DIR", "state")
 
 app = Application(
-    consumer_group="ttl-verify-feature-v1",
+    consumer_group="ttl-verify-feature-v2",
     state_dir=STATE_DIR,
     auto_offset_reset="latest",
 )

@@ -9,7 +9,7 @@ from quixstreams import Application
 STATE_DIR = os.environ.get("STATE_DIR", "state")
 
 app = Application(
-    consumer_group="ttl-verify-stable-v1",
+    consumer_group="ttl-verify-stable-v2",
     state_dir=STATE_DIR,
     auto_offset_reset="latest",
 )
