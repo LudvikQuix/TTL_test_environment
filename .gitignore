@@ -13,3 +13,6 @@ dist/
 .ruff_cache/
 .env
 scripts/
+
+# scratch
+.tmp/

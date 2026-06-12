@@ -39,11 +39,14 @@ def _dir_size_bytes(path: str) -> int:
 def _rocksdb_num_keys() -> int:
     try:
         total = 0
-        for store in app._state_manager.stores.values():
-            for partition in store.partitions.values():
-                n = partition._db.property_int_value("rocksdb.estimate-num-keys")
-                if n is not None:
-                    total += int(n)
+        for topic_stores in app._state_manager.stores.values():
+            for store in topic_stores.values():
+                for partition in store.partitions.values():
+                    n = partition._db.property_int_value(
+                        "rocksdb.estimate-num-keys"
+                    )
+                    if n is not None:
+                        total += int(n)
         return total
     except Exception:
         return -1

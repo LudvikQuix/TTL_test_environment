@@ -184,6 +184,64 @@ deployments:
       - name: output
         inputType: OutputTopic
         value: ttl-verify-stable-out
+  - name: Recovery Generator
+    application: recovery-generator
+    version: latest
+    deploymentType: Service
+    resources:
+      limits:
+        cpu: 200
+        memory: 200
+    desiredStatus: Stopped
+    variables:
+      - name: output
+        inputType: OutputTopic
+        description: Topic to produce recovery-test messages to. Created by the app with segment.ms=60000 / retention.ms=120000.
+        required: true
+        value: recovery-input
+      - name: RATE_PER_SECOND
+        inputType: FreeText
+        description: Messages per second (sleep-paced).
+        value: 100
+      - name: PADDING_BYTES
+        inputType: FreeText
+        description: Bytes of 'x' padding per message so segments fill at a predictable rate.
+        value: 200
+      - name: KEY_COUNT
+        inputType: FreeText
+        description: Key space size; keys are key-{seq % KEY_COUNT}.
+        value: 1000
+  - name: Recovery Filter
+    application: recovery-filter
+    version: latest
+    deploymentType: Service
+    resources:
+      limits:
+        cpu: 200
+        memory: 500
+    state:
+      enabled: true
+      size: 1
+    desiredStatus: Stopped
+    variables:
+      - name: input
+        inputType: InputTopic
+        description: Topic with recovery-test messages (aggressive retention).
+        required: true
+        value: recovery-input
+      - name: output
+        inputType: OutputTopic
+        description: Topic with count-enriched messages.
+        required: true
+        value: recovery-output
+      - name: AUTO_RECOVER
+        inputType: FreeText
+        description: Maps to auto_recover_from_source_offset_out_of_range. true = destroy + rebuild state when committed offset < low watermark; false = raise StateRecoveryOffsetOutOfRange.
+        value: true
+      - name: OFFSET_RESET
+        inputType: FreeText
+        description: Maps to state_recovery_offset_reset. One of earliest | latest | match.
+        value: earliest
 
 # This section describes the Topics of the data pipeline
 topics:
@@ -194,3 +252,4 @@ topics:
   - name: ttl-verify-input
   - name: ttl-verify-feature-out
   - name: ttl-verify-stable-out
+  - name: recovery-output

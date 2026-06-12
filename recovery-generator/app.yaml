@@ -1,0 +1,26 @@
+name: Recovery Generator
+language: python
+variables:
+  - name: output
+    inputType: OutputTopic
+    description: Topic to produce recovery-test messages to. Created by the app with segment.ms=60000 / retention.ms=120000.
+    defaultValue: recovery-input
+    required: true
+  - name: RATE_PER_SECOND
+    inputType: FreeText
+    description: Messages per second (sleep-paced).
+    defaultValue: "100"
+    required: false
+  - name: PADDING_BYTES
+    inputType: FreeText
+    description: Bytes of 'x' padding per message so segments fill at a predictable rate.
+    defaultValue: "200"
+    required: false
+  - name: KEY_COUNT
+    inputType: FreeText
+    description: Key space size; keys are key-{seq % KEY_COUNT}.
+    defaultValue: "1000"
+    required: false
+dockerfile: build/dockerfile
+runEntryPoint: main.py
+defaultFile: main.py

@@ -1,0 +1,36 @@
+name: Recovery Filter
+language: python
+variables:
+  - name: input
+    inputType: InputTopic
+    description: Topic with recovery-test messages (aggressive retention).
+    defaultValue: recovery-input
+    required: true
+  - name: output
+    inputType: OutputTopic
+    description: Topic with count-enriched messages.
+    defaultValue: recovery-output
+    required: true
+  - name: AUTO_RECOVER
+    inputType: FreeText
+    description: Maps to auto_recover_from_source_offset_out_of_range. true = destroy + rebuild state when committed offset < low watermark; false = raise StateRecoveryOffsetOutOfRange.
+    defaultValue: "true"
+    required: false
+  - name: OFFSET_RESET
+    inputType: FreeText
+    description: Maps to state_recovery_offset_reset. One of earliest | latest | match.
+    defaultValue: earliest
+    required: false
+  - name: STATE_DIR
+    inputType: FreeText
+    description: Local directory for RocksDB state.
+    defaultValue: state
+    required: false
+  - name: STATE_SIZE_LOG_INTERVAL
+    inputType: FreeText
+    description: Seconds between [STATE-SIZE-RECOVERY] log lines.
+    defaultValue: "10"
+    required: false
+dockerfile: build/dockerfile
+runEntryPoint: main.py
+defaultFile: main.py
