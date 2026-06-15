@@ -5,7 +5,7 @@ State entries can now expire automatically. Pass a `ttl=` to `state.set(...)` an
 ## Install
 
 ```bash
-pip install quixstreams==3.24.0a1 \
+pip install quixstreams==3.24.1a1 \
   --extra-index-url https://pkgs.dev.azure.com/quix-analytics/53f7fe95-59fe-4307-b479-2473b96de6d1/_packaging/public/pypi/simple/
 ```
 
@@ -13,7 +13,7 @@ Or in `requirements.txt`:
 
 ```
 --extra-index-url https://pkgs.dev.azure.com/quix-analytics/53f7fe95-59fe-4307-b479-2473b96de6d1/_packaging/public/pypi/simple/
-quixstreams==3.24.0a1
+quixstreams==3.24.1a1
 ```
 
 ## How to use
@@ -213,8 +213,146 @@ from datetime import timedelta
 DEFAULT_TTL = timedelta(seconds=int(os.environ.get("STATE_TTL_SECONDS", "300")))
 ```
 
+## Upgrading an existing store — `legacy_records_ttl`
+
+Everything above assumes a store that used TTL from the start. But what about a
+store that was **already running before TTL existed** (e.g. a dedup app on an
+older Quix Streams) and is now upgraded? Its records were written **without**
+`ttl=`, so they are "never expires" — and the new `ttl=` only applies to records
+written *after* the upgrade. Worse: the first `ttl=` write on such a populated
+store used to **reject** with `IncompatibleStateStoreError` ("delete the state
+directory"), which is unusable in Quix Cloud (no customer-callable state reset).
+
+`legacy_records_ttl` fixes this. Set it on `RocksDBOptions` and, on upgrade, the
+pre-existing un-stamped records are **backfilled** with a TTL in place — no state
+deletion.
+
+```python
+from datetime import timedelta
+from quixstreams import Application
+from quixstreams.state.rocksdb.options import RocksDBOptions
+
+app = Application(
+    consumer_group="my-dedup",
+    rocksdb_options=RocksDBOptions(
+        legacy_records_ttl=timedelta(days=7),   # opt-in; default None
+    ),
+)
+```
+
+### Full example — upgrading a dedup app
+
+**Before (the old version, pre-TTL):** a dedup filter that stores a key forever.
+Over time the store grows unbounded — every key seen is remembered.
+
+```python
+from quixstreams import Application
+
+app = Application(consumer_group="my-dedup", auto_offset_reset="earliest")
+sdf = app.dataframe(app.topic("input"))
+
+def dedup(value, key, timestamp, headers, state):
+    if state.get("seen"):
+        return False                      # already seen — drop
+    state.set("seen", True)               # no ttl= → remembered forever
+    return True
+
+sdf = sdf.filter(dedup, stateful=True, metadata=True)
+sdf = sdf.to_topic(app.topic("output"))
+app.run()
+```
+
+**After (upgrade):** keep the *same* deployment and state, add
+`legacy_records_ttl`, and add `ttl=` to the write. On the first `ttl=` write the
+existing forever-keys are backfilled to expire in 7 days, and new keys expire 7
+days after they're seen.
+
+```python
+from datetime import timedelta
+from quixstreams import Application
+from quixstreams.state.rocksdb.options import RocksDBOptions
+
+app = Application(
+    consumer_group="my-dedup",            # same group / same state
+    auto_offset_reset="earliest",
+    rocksdb_options=RocksDBOptions(
+        legacy_records_ttl=timedelta(days=7),   # migrate the old keys on enable
+    ),
+)
+sdf = app.dataframe(app.topic("input"))
+
+def dedup(value, key, timestamp, headers, state):
+    if state.get("seen"):
+        return False
+    state.set("seen", True, ttl=timedelta(days=7))   # now expires
+    return True
+
+sdf = sdf.filter(dedup, stateful=True, metadata=True)
+sdf = sdf.to_topic(app.topic("output"))
+app.run()
+```
+
+On startup the log shows the one-time migration:
+
+```
+[INFO] [quixstreams] : Backfilled 1234567 legacy records and flipped state store partition into TTL mode (legacy_records_ttl)
+```
+
+After it has run once you can drop `legacy_records_ttl` from the options again —
+the store stays migrated and never re-backfills.
+
+### How it behaves
+
+- **Opt-in, default `None`.** Unset → behavior is byte-identical to before
+  (a populated legacy store still rejects on the first `ttl=` write). Only set it
+  when you want the upgrade to migrate old data.
+- **Activation gate — only when your code actually uses `ttl=`.** Setting the
+  option alone does nothing. The store only migrates when the application
+  performs a real `state.set(..., ttl=...)`. No `ttl=` in your code ⇒ the store
+  stays legacy and the option is inert.
+- **What happens on the first `ttl=` write** (decided at flush):
+  - store already migrated (`__ttl_enabled__` set) → nothing, never re-runs;
+  - **empty** store → clean flip, nothing to backfill;
+  - **populated** + `legacy_records_ttl` set → **backfill** every pre-existing
+    record with the TTL, then flip into TTL mode;
+  - **populated** + `legacy_records_ttl` unset → reject (with a message pointing
+    at `legacy_records_ttl`).
+- **One-time, set-once-then-remove.** Backfill is durable (the re-stamped values
+  are written to the changelog too), so once it has run you can remove the option
+  again — it never re-backfills. The `__ttl_enabled__` flag guarantees it runs
+  exactly once in the store's lifetime.
+- **Bounded memory.** Backfill runs in chunks
+  (`RocksDBOptions.legacy_backfill_chunk_size`, default `10_000`), so peak memory
+  is one chunk regardless of store size — a multi-million-record store migrates
+  without OOM. Processing is paused for the duration of the (one-time) backfill.
+- **No never-expires data while active.** Once a store is migrated with
+  `legacy_records_ttl` set, a write with **no** `ttl=` is floored to
+  `legacy_records_ttl` instead of living forever — so nothing in the store is
+  permanent while the feature is active. (Leave the option unset to keep the
+  classic "no `ttl=` ⇒ forever" semantics.)
+
+### Reference clock — when do migrated records expire?
+
+Legacy records carry **no original timestamp**, so their true age is
+unrecoverable. They are all stamped to expire `legacy_records_ttl` after the
+**enable moment**, measured in **event time** (the stream's high-water mark) —
+not after each record's real age. So they drain together once the stream's event
+time advances `legacy_records_ttl` past the upgrade. Because expiry is event-time
+based, the count only drains while **new messages keep arriving**; an idle stream
+freezes the clock and nothing expires until traffic resumes.
+
+On a **cold restore** (state volume lost, rebuilt from the changelog), expiry is
+judged against **wall-clock at rebuild time** rather than a stamp-derived clock,
+so migrated records don't collapse to one on replay.
+
 ## Notes
 
-- `state.set(...)` **without** `ttl=` → entry persists forever.
-- `state.set(..., ttl=...)` → entry returns `None` from `state.get` once expired.
-- On-disk reclamation happens during RocksDB compaction, so disk size lags the logical expiry.
+- `state.set(...)` **without** `ttl=` → entry persists forever *(unless
+  `legacy_records_ttl` is active on a migrated store — then it is floored to that
+  TTL)*.
+- `state.set(..., ttl=...)` → entry returns `None` from `state.get` once expired,
+  regardless of `legacy_records_ttl`.
+- On-disk reclamation happens during RocksDB compaction, so disk size lags the
+  logical expiry. Watch the logical key count, not the on-disk byte size.
+- `legacy_records_ttl` migrates a *populated* legacy store on upgrade; it is a
+  one-time, opt-in migration and is inert until your code issues a `ttl=` write.
