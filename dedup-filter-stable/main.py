@@ -21,8 +21,10 @@ _ROCKSDB_OPTS = RocksDBOptions(
 
 _PADDING = "x" * VALUE_PADDING_BYTES
 
-# Stable quixstreams has no TTL feature, so logical state grows unbounded.
-_live: set = set()
+# Session-only counter: in-memory, resets to empty on every restart and only
+# grows from messages seen THIS run. NOT a measure of persisted state — kept
+# purely as an activity signal. The real numbers come from RocksDB below.
+_session_seen: set = set()
 
 
 def _dir_size_bytes(path: str) -> int:
@@ -36,14 +38,38 @@ def _dir_size_bytes(path: str) -> int:
     return total
 
 
-def _rocksdb_num_keys() -> int:
+def _iter_partitions():
+    # _state_manager.stores is {stream_id: {store_name: Store}} — two dict
+    # levels, then the Store, then its partitions. (The old code stopped one
+    # level short and silently hit the except branch, hence rocksdb_keys=-1.)
+    for stream_stores in app._state_manager.stores.values():
+        for store in stream_stores.values():
+            for partition in store.partitions.values():
+                yield partition
+
+
+def _rocksdb_est_keys() -> int:
+    """RocksDB's own key estimate across partitions — cheap, persists across
+    restarts. Includes tombstones / not-yet-compacted entries, so it lags
+    logical deletes."""
     try:
         total = 0
-        for store in app._state_manager.stores.values():
-            for partition in store.partitions.values():
-                n = partition._db.property_int_value("rocksdb.estimate-num-keys")
-                if n is not None:
-                    total += int(n)
+        for partition in _iter_partitions():
+            n = partition._db.property_int_value("rocksdb.estimate-num-keys")
+            if n is not None:
+                total += int(n)
+        return total
+    except Exception:
+        return -1
+
+
+def _rocksdb_exact_keys() -> int:
+    """Exact count of keys in the default CF across partitions — the real
+    persisted entry count. O(keys); fine at test scale."""
+    try:
+        total = 0
+        for partition in _iter_partitions():
+            total += sum(1 for _ in partition._db.keys())
         return total
     except Exception:
         return -1
@@ -53,10 +79,12 @@ def _periodic_status_logger():
     while True:
         time.sleep(STATE_SIZE_LOG_INTERVAL)
         size = _dir_size_bytes(STATE_DIR)
-        rocks_keys = _rocksdb_num_keys()
+        est = _rocksdb_est_keys()
+        exact = _rocksdb_exact_keys()
         print(
             f"[STATE-SIZE-STABLE] bytes={size} ({size/1024:.1f} KiB) "
-            f"live_entries={len(_live)} rocksdb_keys={rocks_keys}",
+            f"rocksdb_exact_keys={exact} rocksdb_est_keys={est} "
+            f"session_seen={len(_session_seen)}",
             flush=True,
         )
 
@@ -87,7 +115,7 @@ def dedup_filter(value, key, timestamp, headers, state):
         return False
 
     state.set("entry", {"status": new_status, "pad": _PADDING})
-    _live.add(order_id)
+    _session_seen.add(order_id)
     return True
 
 

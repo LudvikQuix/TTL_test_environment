@@ -11,6 +11,13 @@ from quixstreams import Application
 from quixstreams.state.rocksdb.options import RocksDBOptions
 
 STATE_TTL_SECONDS = int(os.environ.get("STATE_TTL_SECONDS", "3"))
+# Backfill TTL for pre-existing legacy (un-stamped) records on upgrade.
+# 0 = off (preserve current reject-on-populated-store behavior).
+LEGACY_RECORDS_TTL_SECONDS = int(os.environ.get("LEGACY_RECORDS_TTL_SECONDS", "5"))
+# Consumer group drives the state namespace. Default matches the stable
+# seeder so the feature build opens the SAME populated legacy store and the
+# upgrade actually exercises backfill.
+CONSUMER_GROUP = os.environ.get("CONSUMER_GROUP", "dedup-filter-stable-v6")
 STATE_DIR = os.environ.get("STATE_DIR", "state")
 STATE_SIZE_LOG_INTERVAL = int(os.environ.get("STATE_SIZE_LOG_INTERVAL", "10"))
 VALUE_PADDING_BYTES = int(os.environ.get("VALUE_PADDING_BYTES", "800"))
@@ -21,14 +28,20 @@ _ROCKSDB_OPTS = RocksDBOptions(
     write_buffer_size=int(os.environ.get("ROCKSDB_WRITE_BUFFER_SIZE", str(4 * 1024 * 1024))),
     target_file_size_base=int(os.environ.get("ROCKSDB_TARGET_FILE_SIZE_BASE", str(2 * 1024 * 1024))),
     max_write_buffer_number=int(os.environ.get("ROCKSDB_MAX_WRITE_BUFFER_NUMBER", "2")),
+    legacy_records_ttl=(
+        timedelta(seconds=LEGACY_RECORDS_TTL_SECONDS)
+        if LEGACY_RECORDS_TTL_SECONDS > 0
+        else None
+    ),
 )
 
 _PADDING = "x" * VALUE_PADDING_BYTES
 
-# Mirror of the *logical* state: order_id -> wall-clock expiry seconds.
-# Pruned in the periodic logger; used to report the live entry count
-# independently of RocksDB compaction lag.
-_live: dict = {}
+# Session-only view of NEW writes made this run: order_id -> wall-clock expiry.
+# Pruned in the logger. NOTE: this does NOT include the backfilled legacy
+# records — those live only in RocksDB — so to watch the backfill drain, read
+# rocksdb_exact_keys below, not this counter.
+_session_new: dict = {}
 
 
 def _dir_size_bytes(path: str) -> int:
@@ -42,22 +55,37 @@ def _dir_size_bytes(path: str) -> int:
     return total
 
 
-def _rocksdb_num_keys() -> int:
-    """Sum 'rocksdb.estimate-num-keys' across every open state partition.
+def _iter_partitions():
+    # _state_manager.stores is {stream_id: {store_name: Store}}.
+    for stream_stores in app._state_manager.stores.values():
+        for store in stream_stores.values():
+            for partition in store.partitions.values():
+                yield partition
 
-    Includes tombstones / not-yet-compacted entries, so it can be larger than
-    the logical live count and will visibly drop after a compaction.
-    """
+
+def _rocksdb_est_keys() -> int:
+    """RocksDB key estimate across partitions (all CFs). Includes tombstones /
+    not-yet-compacted entries, so it lags logical expiry and drops after a
+    sweep/compaction. Post-backfill it also counts the __ttl_index__ CF."""
     try:
         total = 0
-        for topic_stores in app._state_manager.stores.values():
-            for store in topic_stores.values():
-                for partition in store.partitions.values():
-                    n = partition._db.property_int_value(
-                        "rocksdb.estimate-num-keys"
-                    )
-                    if n is not None:
-                        total += int(n)
+        for partition in _iter_partitions():
+            n = partition._db.property_int_value("rocksdb.estimate-num-keys")
+            if n is not None:
+                total += int(n)
+        return total
+    except Exception:
+        return -1
+
+
+def _rocksdb_exact_keys() -> int:
+    """Exact count of keys in the default CF across partitions — the real
+    persisted dedup-entry count (excludes the index CF). Drains as expired
+    backfilled records are swept. O(keys); fine at test scale."""
+    try:
+        total = 0
+        for partition in _iter_partitions():
+            total += sum(1 for _ in partition._db.keys())
         return total
     except Exception:
         return -1
@@ -67,15 +95,17 @@ def _periodic_status_logger():
     while True:
         time.sleep(STATE_SIZE_LOG_INTERVAL)
         now = time.time()
-        for k in list(_live.keys()):
-            exp = _live.get(k)
+        for k in list(_session_new.keys()):
+            exp = _session_new.get(k)
             if exp is not None and exp <= now:
-                _live.pop(k, None)
+                _session_new.pop(k, None)
         size = _dir_size_bytes(STATE_DIR)
-        rocks_keys = _rocksdb_num_keys()
+        est = _rocksdb_est_keys()
+        exact = _rocksdb_exact_keys()
         print(
             f"[STATE-SIZE] bytes={size} ({size/1024:.1f} KiB) "
-            f"live_entries={len(_live)} rocksdb_keys={rocks_keys}",
+            f"rocksdb_exact_keys={exact} rocksdb_est_keys={est} "
+            f"session_new_live={len(_session_new)}",
             flush=True,
         )
 
@@ -83,7 +113,7 @@ def _periodic_status_logger():
 threading.Thread(target=_periodic_status_logger, daemon=True).start()
 
 app = Application(
-    consumer_group="dedup-filter-v5",
+    consumer_group=CONSUMER_GROUP,
     state_dir=STATE_DIR,
     rocksdb_options=_ROCKSDB_OPTS,
 )
@@ -111,7 +141,7 @@ def dedup_filter(value, key, timestamp, headers, state):
         {"status": new_status, "pad": _PADDING},
         ttl=timedelta(seconds=STATE_TTL_SECONDS),
     )
-    _live[order_id] = time.time() + STATE_TTL_SECONDS
+    _session_new[order_id] = time.time() + STATE_TTL_SECONDS
     return True
 
 
