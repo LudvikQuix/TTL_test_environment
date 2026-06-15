@@ -5,7 +5,7 @@ State entries can now expire automatically. Pass a `ttl=` to `state.set(...)` an
 ## Install
 
 ```bash
-pip install quixstreams==3.24.1a1 \
+pip install quixstreams==3.24.1a2 \
   --extra-index-url https://pkgs.dev.azure.com/quix-analytics/53f7fe95-59fe-4307-b479-2473b96de6d1/_packaging/public/pypi/simple/
 ```
 
@@ -13,7 +13,7 @@ Or in `requirements.txt`:
 
 ```
 --extra-index-url https://pkgs.dev.azure.com/quix-analytics/53f7fe95-59fe-4307-b479-2473b96de6d1/_packaging/public/pypi/simple/
-quixstreams==3.24.1a1
+quixstreams==3.24.1a2
 ```
 
 ## How to use
