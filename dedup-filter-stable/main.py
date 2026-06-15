@@ -103,7 +103,7 @@ def _periodic_status_logger():
 threading.Thread(target=_periodic_status_logger, daemon=True).start()
 
 app = Application(
-    consumer_group="dedup-filter-stable-v6",
+    consumer_group="dedup-filter-stable-v7",
     state_dir=STATE_DIR,
     rocksdb_options=_ROCKSDB_OPTS,
 )
