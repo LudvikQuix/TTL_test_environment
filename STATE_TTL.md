@@ -325,11 +325,12 @@ the store stays migrated and never re-backfills.
   (`RocksDBOptions.legacy_backfill_chunk_size`, default `10_000`), so peak memory
   is one chunk regardless of store size — a multi-million-record store migrates
   without OOM. Processing is paused for the duration of the (one-time) backfill.
-- **No never-expires data while active.** Once a store is migrated with
-  `legacy_records_ttl` set, a write with **no** `ttl=` is floored to
-  `legacy_records_ttl` instead of living forever — so nothing in the store is
-  permanent while the feature is active. (Leave the option unset to keep the
-  classic "no `ttl=` ⇒ forever" semantics.)
+- **Migration-only — it never touches steady-state writes.** `legacy_records_ttl`
+  applies *only* to the pre-existing legacy records, once. New records always get
+  their lifetime from the **per-write** `ttl=` on `state.set(...)` — a write with
+  no `ttl=` stays never-expires, exactly as before. So there are two independent
+  sources: `legacy_records_ttl` for the old data (migration), and per-write `ttl=`
+  for everything new.
 
 ### Reference clock — when do migrated records expire?
 
@@ -347,9 +348,9 @@ so migrated records don't collapse to one on replay.
 
 ## Notes
 
-- `state.set(...)` **without** `ttl=` → entry persists forever *(unless
-  `legacy_records_ttl` is active on a migrated store — then it is floored to that
-  TTL)*.
+- `state.set(...)` **without** `ttl=` → entry persists forever (always — even on
+  a store migrated with `legacy_records_ttl`; that option only stamps the
+  pre-existing records, never steady-state writes).
 - `state.set(..., ttl=...)` → entry returns `None` from `state.get` once expired,
   regardless of `legacy_records_ttl`.
 - On-disk reclamation happens during RocksDB compaction, so disk size lags the
