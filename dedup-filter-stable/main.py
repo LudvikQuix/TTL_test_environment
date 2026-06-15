@@ -1,6 +1,7 @@
 import os
 import threading
 import time
+from datetime import timedelta
 
 from dotenv import load_dotenv
 
@@ -9,7 +10,11 @@ load_dotenv()
 from quixstreams import Application
 from quixstreams.state.rocksdb.options import RocksDBOptions
 
-# No TTL here — pure seeder that fills state to build a large legacy store.
+# TTL applied to each new dedup write (event-time based).
+STATE_TTL_SECONDS = int(os.environ.get("STATE_TTL_SECONDS", "5"))
+# Backfill TTL for the pre-existing legacy (un-stamped) records on the first
+# ttl= write. 0 = off (keep the pre-feature reject-on-populated behavior).
+LEGACY_RECORDS_TTL_SECONDS = int(os.environ.get("LEGACY_RECORDS_TTL_SECONDS", "5"))
 STATE_DIR = os.environ.get("STATE_DIR", "state")
 STATE_SIZE_LOG_INTERVAL = int(os.environ.get("STATE_SIZE_LOG_INTERVAL", "10"))
 VALUE_PADDING_BYTES = int(os.environ.get("VALUE_PADDING_BYTES", "800"))
@@ -18,6 +23,11 @@ _ROCKSDB_OPTS = RocksDBOptions(
     write_buffer_size=int(os.environ.get("ROCKSDB_WRITE_BUFFER_SIZE", str(4 * 1024 * 1024))),
     target_file_size_base=int(os.environ.get("ROCKSDB_TARGET_FILE_SIZE_BASE", str(2 * 1024 * 1024))),
     max_write_buffer_number=int(os.environ.get("ROCKSDB_MAX_WRITE_BUFFER_NUMBER", "2")),
+    legacy_records_ttl=(
+        timedelta(seconds=LEGACY_RECORDS_TTL_SECONDS)
+        if LEGACY_RECORDS_TTL_SECONDS > 0
+        else None
+    ),
 )
 
 _PADDING = "x" * VALUE_PADDING_BYTES
@@ -115,7 +125,13 @@ def dedup_filter(value, key, timestamp, headers, state):
     if stored_status == new_status:
         return False
 
-    state.set("entry", {"status": new_status, "pad": _PADDING})
+    # First ttl= write on the populated legacy store flips the partition and
+    # (because legacy_records_ttl is set) backfills the pre-existing records.
+    state.set(
+        "entry",
+        {"status": new_status, "pad": _PADDING},
+        ttl=timedelta(seconds=STATE_TTL_SECONDS),
+    )
     _session_seen.add(order_id)
     return True
 
