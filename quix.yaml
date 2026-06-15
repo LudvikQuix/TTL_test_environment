@@ -96,6 +96,7 @@ deployments:
         description: Pad each stored value with this many bytes (matches the TTL filter for apples-to-apples comparison).
         value: 1000
   - name: Dedup Filter (Stable 3.23.6)
+    group: v1.1
     application: dedup-filter-stable
     version: latest
     deploymentType: Service
@@ -107,7 +108,7 @@ deployments:
       enabled: true
       size: 1
       path: /app/state5
-    desiredStatus: Running
+    desiredStatus: Stopped
     variables:
       - name: input
         inputType: InputTopic
@@ -152,7 +153,7 @@ deployments:
     state:
       enabled: true
       size: 1
-    desiredStatus: Stopped
+    desiredStatus: Running
     variables:
       - name: input
         inputType: InputTopic
@@ -175,7 +176,7 @@ deployments:
     state:
       enabled: true
       size: 1
-    desiredStatus: Stopped
+    desiredStatus: Running
     variables:
       - name: input
         inputType: InputTopic
