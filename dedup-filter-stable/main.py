@@ -1,7 +1,6 @@
 import os
 import threading
 import time
-from datetime import timedelta
 
 from dotenv import load_dotenv
 
@@ -10,10 +9,8 @@ load_dotenv()
 from quixstreams import Application
 from quixstreams.state.rocksdb.options import RocksDBOptions
 
-# TTL build (sc-73191 branch) for the migration test: upgrade in place onto the
-# v7.2 store the 3.23.6 seeder filled. First ttl= write flips + backfills.
-STATE_TTL_SECONDS = int(os.environ.get("STATE_TTL_SECONDS", "5"))
-LEGACY_RECORDS_TTL_SECONDS = int(os.environ.get("LEGACY_RECORDS_TTL_SECONDS", "5"))
+# Genuine quixstreams==3.23.6 seeder: NO TTL machinery at all. Fills a clean
+# legacy store with un-stamped records that a later sc-73191 build can migrate.
 STATE_DIR = os.environ.get("STATE_DIR", "state")
 STATE_SIZE_LOG_INTERVAL = int(os.environ.get("STATE_SIZE_LOG_INTERVAL", "10"))
 VALUE_PADDING_BYTES = int(os.environ.get("VALUE_PADDING_BYTES", "800"))
@@ -22,11 +19,6 @@ _ROCKSDB_OPTS = RocksDBOptions(
     write_buffer_size=int(os.environ.get("ROCKSDB_WRITE_BUFFER_SIZE", str(4 * 1024 * 1024))),
     target_file_size_base=int(os.environ.get("ROCKSDB_TARGET_FILE_SIZE_BASE", str(2 * 1024 * 1024))),
     max_write_buffer_number=int(os.environ.get("ROCKSDB_MAX_WRITE_BUFFER_NUMBER", "2")),
-    legacy_records_ttl=(
-        timedelta(seconds=LEGACY_RECORDS_TTL_SECONDS)
-        if LEGACY_RECORDS_TTL_SECONDS > 0
-        else None
-    ),
 )
 
 _PADDING = "x" * VALUE_PADDING_BYTES
@@ -102,7 +94,7 @@ def _periodic_status_logger():
 threading.Thread(target=_periodic_status_logger, daemon=True).start()
 
 app = Application(
-    consumer_group="dedup-filter-stable-v7.2",
+    consumer_group="dedup-filter-stable-v7.4",
     state_dir=STATE_DIR,
     rocksdb_options=_ROCKSDB_OPTS,
 )
@@ -124,13 +116,8 @@ def dedup_filter(value, key, timestamp, headers, state):
     if stored_status == new_status:
         return False
 
-    # First ttl= write on the populated v7.2 store flips the partition and
-    # backfills the pre-existing 3.23.6 records (legacy_records_ttl).
-    state.set(
-        "entry",
-        {"status": new_status, "pad": _PADDING},
-        ttl=timedelta(seconds=STATE_TTL_SECONDS),
-    )
+    # Genuine 3.23.6: plain un-stamped write, no ttl= (legacy state to migrate).
+    state.set("entry", {"status": new_status, "pad": _PADDING})
     _session_seen.add(order_id)
     return True
 
