@@ -26,6 +26,16 @@ variables:
     description: Consumer-group suffix (e.g. v7.8). Bump for a fresh clean store without touching code.
     defaultValue: v7.8
     required: false
+  - name: LEGACY_RECORDS_TTL_SECONDS
+    inputType: FreeText
+    description: Backfill expiry for pre-existing legacy records on flip. Set LONG (e.g. 600) when testing OP-4 so records survive the manual steps.
+    defaultValue: "5"
+    required: false
+  - name: STATE_TTL_SECONDS
+    inputType: FreeText
+    description: Per-write ttl= for new dedup entries. Set LONG (e.g. 600) when testing OP-4 so records do not expire mid-test.
+    defaultValue: "5"
+    required: false
 dockerfile: build/dockerfile
 runEntryPoint: main.py
 defaultFile: main.py
