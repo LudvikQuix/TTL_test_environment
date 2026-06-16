@@ -24,7 +24,7 @@ deployments:
       - name: KEY_SPACE
         inputType: FreeText
         description: Upper bound for random order IDs (1..KEY_SPACE). Larger = more unique keys = faster state growth downstream.
-        value: 2000000000
+        value: 5000
       - name: MESSAGE_COUNT
         inputType: FreeText
         description: Total messages to produce, then exit. 0 = run forever (Service mode).
@@ -108,7 +108,7 @@ deployments:
       enabled: true
       size: 1
       path: /app/state
-    desiredStatus: Stopped
+    desiredStatus: Running
     variables:
       - name: input
         inputType: InputTopic
@@ -126,7 +126,7 @@ deployments:
         value: 1000
       - name: TTL_MODE
         inputType: FreeText
-        description: "0=legacy SEEDER (no ttl=, byte-identical to 3.23.6). 1=TTL build (ttl= writes + legacy_records_ttl -> flip+backfill). Toggle in Portal, no code push."
+        description: 0=legacy SEEDER (no ttl=, byte-identical to 3.23.6). 1=TTL build (ttl= writes + legacy_records_ttl -> flip+backfill). Toggle in Portal, no code push.
         value: 0
       - name: CG_VERSION
         inputType: FreeText
