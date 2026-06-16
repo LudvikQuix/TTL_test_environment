@@ -24,7 +24,7 @@ deployments:
       - name: KEY_SPACE
         inputType: FreeText
         description: Upper bound for random order IDs (1..KEY_SPACE). Larger = more unique keys = faster state growth downstream.
-        value: 20000000
+        value: 200000000
       - name: MESSAGE_COUNT
         inputType: FreeText
         description: Total messages to produce, then exit. 0 = run forever (Service mode).
@@ -32,11 +32,11 @@ deployments:
       - name: SLEEP_SECONDS
         inputType: FreeText
         description: Delay between messages in seconds. Default 0.01 = ~100 msg/s.
-        value: 0.0005
+        value: 0.0001
       - name: SEED
         inputType: FreeText
         description: Optional integer seed for random. Set to make the sequence reproducible.
-        value: ''
+        value: 42
   - name: Dedup Filter
     application: dedup-filter
     version: latest
