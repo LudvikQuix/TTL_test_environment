@@ -14,7 +14,7 @@ deployments:
       limits:
         cpu: 200
         memory: 200
-    desiredStatus: Running
+    desiredStatus: Stopped
     variables:
       - name: output
         inputType: OutputTopic
@@ -127,19 +127,19 @@ deployments:
       - name: TTL_MODE
         inputType: FreeText
         description: 0 = legacy SEEDER (no ttl=, byte-identical to 3.23.6). 1 = TTL build (ttl= writes + legacy_records_ttl -> flip+backfill). Toggle here, no code push.
-        value: 1
+        value: 0
       - name: CG_VERSION
         inputType: FreeText
         description: Consumer-group suffix (e.g. v7.8). Bump for a fresh clean store without touching code.
-        value: v8.1
+        value: v8.2
       - name: LEGACY_RECORDS_TTL_SECONDS
         inputType: FreeText
         description: Backfill expiry for pre-existing legacy records on flip. Set LONG (e.g. 600) when testing OP-4 so records survive the manual steps.
-        value: 5
+        value: 600
       - name: STATE_TTL_SECONDS
         inputType: FreeText
         description: Per-write ttl= for new dedup entries. Set LONG (e.g. 600) when testing OP-4 so records do not expire mid-test.
-        value: 5
+        value: 600
   - name: TTL Verify Generator
     application: ttl-verify-generator
     version: latest
