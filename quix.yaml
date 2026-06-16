@@ -123,7 +123,7 @@ deployments:
       - name: TTL_MODE
         inputType: FreeText
         description: 0 = legacy SEEDER (no ttl=, byte-identical to 3.23.6). 1 = TTL build (ttl= writes + legacy_records_ttl -> flip+backfill). Toggle here, no code push.
-        value: 0
+        value: 1
       - name: CG_VERSION
         inputType: FreeText
         description: Consumer-group suffix (e.g. v7.8). Bump for a fresh clean store without touching code.
