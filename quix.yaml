@@ -104,11 +104,7 @@ deployments:
       limits:
         cpu: 200
         memory: 1000
-    state:
-      enabled: true
-      size: 1
-      path: /app/state
-    desiredStatus: Running
+    desiredStatus: Stopped
     variables:
       - name: input
         inputType: InputTopic
@@ -124,14 +120,6 @@ deployments:
         inputType: FreeText
         description: Pad each stored value with this many bytes (matches the TTL filter for apples-to-apples comparison).
         value: 1000
-      - name: TTL_MODE
-        inputType: FreeText
-        description: 0=legacy SEEDER (no ttl=, byte-identical to 3.23.6). 1=TTL build (ttl= writes + legacy_records_ttl -> flip+backfill). Toggle in Portal, no code push.
-        value: 0
-      - name: CG_VERSION
-        inputType: FreeText
-        description: Consumer-group suffix (e.g. v7.8). Bump to start a fresh clean store without touching code.
-        value: v7.8
   - name: TTL Verify Generator
     application: ttl-verify-generator
     version: latest
