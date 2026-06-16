@@ -10,14 +10,13 @@ load_dotenv()
 from quixstreams import Application
 from quixstreams.state.rocksdb.options import RocksDBOptions
 
-STATE_TTL_SECONDS = int(os.environ.get("STATE_TTL_SECONDS", "3"))
+STATE_TTL_SECONDS = int(os.environ.get("STATE_TTL_SECONDS", "30"))
 # Backfill TTL for pre-existing legacy (un-stamped) records on upgrade.
 # 0 = off (preserve current reject-on-populated-store behavior).
-LEGACY_RECORDS_TTL_SECONDS = int(os.environ.get("LEGACY_RECORDS_TTL_SECONDS", "5"))
-# Consumer group drives the state namespace. Default matches the stable
-# seeder so the feature build opens the SAME populated legacy store and the
-# upgrade actually exercises backfill.
-CONSUMER_GROUP = os.environ.get("CONSUMER_GROUP", "dedup-filter-stable-v6")
+LEGACY_RECORDS_TTL_SECONDS = int(os.environ.get("LEGACY_RECORDS_TTL_SECONDS", "30"))
+# Consumer group drives the state namespace. Own group so this is a standalone
+# TTL-on comparison (not sharing the stable store).
+CONSUMER_GROUP = os.environ.get("CONSUMER_GROUP", "dedup-filter-feature-v1")
 STATE_DIR = os.environ.get("STATE_DIR", "state")
 STATE_SIZE_LOG_INTERVAL = int(os.environ.get("STATE_SIZE_LOG_INTERVAL", "10"))
 VALUE_PADDING_BYTES = int(os.environ.get("VALUE_PADDING_BYTES", "800"))

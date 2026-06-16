@@ -13,8 +13,13 @@ variables:
     required: true
   - name: STATE_TTL_SECONDS
     inputType: FreeText
-    description: TTL for seen-key state in seconds
-    defaultValue: "3"
+    description: Per-write ttl= for new dedup entries, in seconds.
+    defaultValue: "30"
+    required: false
+  - name: LEGACY_RECORDS_TTL_SECONDS
+    inputType: FreeText
+    description: Backfill TTL (seconds) for pre-existing legacy records on upgrade. 0 = off (reject on populated store).
+    defaultValue: "30"
     required: false
   - name: VALUE_PADDING_BYTES
     inputType: FreeText
