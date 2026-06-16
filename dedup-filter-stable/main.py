@@ -10,11 +10,27 @@ load_dotenv()
 from quixstreams import Application
 from quixstreams.state.rocksdb.options import RocksDBOptions
 
-# TTL build (sc-73191, pinned to commit 02586bb1 — header-signal fix) for the
-# cold-restore migration test: upgrade onto the v7.7 store the genuine 3.23.6
-# seeder filled. The first ttl= write flips the partition + backfills the
-# pre-existing un-stamped records (legacy_records_ttl) and produces the
-# re-stamped values to the changelog.
+# ---------------------------------------------------------------------------
+# Single build, two modes — switched by Portal ENV VARS (no code push/rebuild).
+#
+#   TTL_MODE   : "0"/off  -> legacy SEEDER. No ttl= writes, no legacy_records_ttl.
+#                           quix-streams stays inert (Rule 1) -> byte-identical
+#                           to v3.23.6: fills the store with un-stamped legacy
+#                           records, changelog carries NO __ttl_stamped__ header.
+#                "1"/on   -> TTL BUILD. ttl= writes + legacy_records_ttl set ->
+#                           first write flips + backfills the legacy records.
+#   CG_VERSION : consumer-group suffix, e.g. "v7.8". Bump it to start a fresh
+#                clean store without touching code.
+#
+# The image always installs the sc-73191 build (header-signal fix); seeding is
+# just this build running with TTL_MODE off, which is legacy/byte-identical.
+# ---------------------------------------------------------------------------
+def _envflag(name: str, default: str = "0") -> bool:
+    return os.environ.get(name, default).strip().lower() in ("1", "true", "yes", "on")
+
+
+TTL_MODE = _envflag("TTL_MODE", "0")
+CG_VERSION = os.environ.get("CG_VERSION", "v7.8").strip()
 STATE_TTL_SECONDS = int(os.environ.get("STATE_TTL_SECONDS", "5"))
 LEGACY_RECORDS_TTL_SECONDS = int(os.environ.get("LEGACY_RECORDS_TTL_SECONDS", "5"))
 STATE_DIR = os.environ.get("STATE_DIR", "state")
@@ -25,9 +41,10 @@ _ROCKSDB_OPTS = RocksDBOptions(
     write_buffer_size=int(os.environ.get("ROCKSDB_WRITE_BUFFER_SIZE", str(4 * 1024 * 1024))),
     target_file_size_base=int(os.environ.get("ROCKSDB_TARGET_FILE_SIZE_BASE", str(2 * 1024 * 1024))),
     max_write_buffer_number=int(os.environ.get("ROCKSDB_MAX_WRITE_BUFFER_NUMBER", "2")),
+    # Only set in TTL mode; in seeder mode it stays None (inert, Rule 1).
     legacy_records_ttl=(
         timedelta(seconds=LEGACY_RECORDS_TTL_SECONDS)
-        if LEGACY_RECORDS_TTL_SECONDS > 0
+        if (TTL_MODE and LEGACY_RECORDS_TTL_SECONDS > 0)
         else None
     ),
 )
@@ -95,7 +112,8 @@ def _periodic_status_logger():
         est = _rocksdb_est_keys()
         exact = _rocksdb_exact_keys()
         print(
-            f"[STATE-SIZE-STABLE] bytes={size} ({size/1024:.1f} KiB) "
+            f"[STATE-SIZE-STABLE] mode={'TTL' if TTL_MODE else 'SEED'} "
+            f"cg={CG_VERSION} bytes={size} ({size/1024:.1f} KiB) "
             f"rocksdb_exact_keys={exact} rocksdb_est_keys={est} "
             f"session_seen={len(_session_seen)}",
             flush=True,
@@ -104,8 +122,15 @@ def _periodic_status_logger():
 
 threading.Thread(target=_periodic_status_logger, daemon=True).start()
 
+print(
+    f"[STARTUP] TTL_MODE={'on' if TTL_MODE else 'off'} consumer_group="
+    f"dedup-filter-stable-{CG_VERSION} "
+    f"legacy_records_ttl={_ROCKSDB_OPTS.legacy_records_ttl}",
+    flush=True,
+)
+
 app = Application(
-    consumer_group="dedup-filter-stable-v7.7",
+    consumer_group=f"dedup-filter-stable-{CG_VERSION}",
     state_dir=STATE_DIR,
     rocksdb_options=_ROCKSDB_OPTS,
 )
@@ -117,7 +142,6 @@ sdf = app.dataframe(input_topic)
 sdf = sdf.group_by("order_id", name="by_order")
 
 
-
 def dedup_filter(value, key, timestamp, headers, state):
     new_status = value["status"]
     order_id = value["order_id"]
@@ -127,13 +151,17 @@ def dedup_filter(value, key, timestamp, headers, state):
     if stored_status == new_status:
         return False
 
-    # First ttl= write on the populated v7.7 store flips the partition and
-    # backfills the pre-existing 3.23.6 records (legacy_records_ttl).
-    state.set(
-        "entry",
-        {"status": new_status, "pad": _PADDING},
-        ttl=timedelta(seconds=STATE_TTL_SECONDS),
-    )
+    if TTL_MODE:
+        # TTL build: ttl= write. On a populated legacy store the first such
+        # write flips the partition and backfills the pre-existing records.
+        state.set(
+            "entry",
+            {"status": new_status, "pad": _PADDING},
+            ttl=timedelta(seconds=STATE_TTL_SECONDS),
+        )
+    else:
+        # Seeder: plain un-stamped write, no ttl= (legacy state to migrate).
+        state.set("entry", {"status": new_status, "pad": _PADDING})
     _session_seen.add(order_id)
     return True
 
