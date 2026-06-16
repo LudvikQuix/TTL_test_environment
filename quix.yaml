@@ -104,7 +104,11 @@ deployments:
       limits:
         cpu: 200
         memory: 1000
-    desiredStatus: Stopped
+    state:
+      enabled: true
+      size: 1
+      path: /app/state
+    desiredStatus: Running
     variables:
       - name: input
         inputType: InputTopic
