@@ -29,7 +29,7 @@ def _envflag(name: str, default: str = "0") -> bool:
     return os.environ.get(name, default).strip().lower() in ("1", "true", "yes", "on")
 
 
-TTL_MODE = _envflag("TTL_MODE", "0")
+TTL_MODE = _envflag("TTL_MODE", "1")
 CG_VERSION = os.environ.get("CG_VERSION", "v7.8").strip()
 STATE_TTL_SECONDS = int(os.environ.get("STATE_TTL_SECONDS", "5"))
 LEGACY_RECORDS_TTL_SECONDS = int(os.environ.get("LEGACY_RECORDS_TTL_SECONDS", "5"))
