@@ -108,7 +108,7 @@ deployments:
       enabled: true
       size: 1
       path: /app/state
-    desiredStatus: Stopped
+    desiredStatus: Running
     variables:
       - name: input
         inputType: InputTopic
@@ -135,11 +135,11 @@ deployments:
       - name: LEGACY_RECORDS_TTL_SECONDS
         inputType: FreeText
         description: Backfill expiry for pre-existing legacy records on flip. Set LONG (e.g. 600) when testing OP-4 so records survive the manual steps.
-        value: 600
+        value: 20
       - name: STATE_TTL_SECONDS
         inputType: FreeText
         description: Per-write ttl= for new dedup entries. Set LONG (e.g. 600) when testing OP-4 so records do not expire mid-test.
-        value: 600
+        value: 20
   - name: TTL Verify Generator
     application: ttl-verify-generator
     version: latest
