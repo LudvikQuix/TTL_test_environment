@@ -11,31 +11,40 @@ from quixstreams import Application
 from quixstreams.state.rocksdb.options import RocksDBOptions
 
 # ---------------------------------------------------------------------------
-# Single build, two modes — switched by Portal ENV VARS (no code push/rebuild).
+# Canonical dedup build — one file for all three dedup services. Behavior is
+# driven entirely by Portal ENV VARS (no code push/rebuild to reconfigure):
 #
 #   TTL_MODE   : "0"/off  -> legacy SEEDER. No ttl= writes, no legacy_records_ttl.
 #                           quix-streams stays inert (Rule 1) -> byte-identical
-#                           to v3.23.6: fills the store with un-stamped legacy
-#                           records, changelog carries NO __ttl_stamped__ header.
+#                           to v3.23.6: un-stamped legacy records, no
+#                           __ttl_stamped__ header on the changelog.
 #                "1"/on   -> TTL BUILD. ttl= writes + legacy_records_ttl set ->
 #                           first write flips + backfills the legacy records.
-#   CG_VERSION : consumer-group suffix, e.g. "v7.8". Bump it to start a fresh
-#                clean store without touching code.
+#   CG_PREFIX  : consumer-group prefix (per service, e.g. "dedup-filter").
+#   CG_VERSION : consumer-group suffix (e.g. "v1"). Bump for a fresh store.
+#   STATE_TTL_SECONDS / LEGACY_RECORDS_TTL_SECONDS : per-write ttl= and the
+#                one-time legacy backfill TTL.
+#   LOGGER     : "on"/"off". off disables the periodic status logger (skips its
+#                per-interval O(keys) rocksdb scan) — set off in production.
 #
-# The image always installs the sc-73191 build (header-signal fix); seeding is
-# just this build running with TTL_MODE off, which is legacy/byte-identical.
+# The image always installs the sc-73191 build (header-signal fix + OP-4 +
+# backfill progress logging); the backfill STARTED/progress/FINISHED logs come
+# from quix-streams and show regardless of LOGGER.
 # ---------------------------------------------------------------------------
 def _envflag(name: str, default: str = "0") -> bool:
     return os.environ.get(name, default).strip().lower() in ("1", "true", "yes", "on")
 
 
 TTL_MODE = _envflag("TTL_MODE", "1")
-CG_VERSION = os.environ.get("CG_VERSION", "v7.8").strip()
-STATE_TTL_SECONDS = int(os.environ.get("STATE_TTL_SECONDS", "5"))
-LEGACY_RECORDS_TTL_SECONDS = int(os.environ.get("LEGACY_RECORDS_TTL_SECONDS", "5"))
+LOGGER_ENABLED = _envflag("LOGGER", "on")
+CG_PREFIX = os.environ.get("CG_PREFIX", "dedup-filter").strip()
+CG_VERSION = os.environ.get("CG_VERSION", "v1").strip()
+STATE_TTL_SECONDS = int(os.environ.get("STATE_TTL_SECONDS", "30"))
+LEGACY_RECORDS_TTL_SECONDS = int(os.environ.get("LEGACY_RECORDS_TTL_SECONDS", "30"))
 STATE_DIR = os.environ.get("STATE_DIR", "state")
 STATE_SIZE_LOG_INTERVAL = int(os.environ.get("STATE_SIZE_LOG_INTERVAL", "10"))
 VALUE_PADDING_BYTES = int(os.environ.get("VALUE_PADDING_BYTES", "800"))
+CONSUMER_GROUP = f"{CG_PREFIX}-{CG_VERSION}"
 
 _ROCKSDB_OPTS = RocksDBOptions(
     write_buffer_size=int(os.environ.get("ROCKSDB_WRITE_BUFFER_SIZE", str(4 * 1024 * 1024))),
@@ -113,24 +122,26 @@ def _periodic_status_logger():
         exact = _rocksdb_exact_keys()
         print(
             f"[STATE-SIZE-STABLE] mode={'TTL' if TTL_MODE else 'SEED'} "
-            f"cg={CG_VERSION} bytes={size} ({size/1024:.1f} KiB) "
+            f"cg={CONSUMER_GROUP} bytes={size} ({size/1024:.1f} KiB) "
             f"rocksdb_exact_keys={exact} rocksdb_est_keys={est} "
             f"session_seen={len(_session_seen)}",
             flush=True,
         )
 
 
-threading.Thread(target=_periodic_status_logger, daemon=True).start()
+if LOGGER_ENABLED:
+    threading.Thread(target=_periodic_status_logger, daemon=True).start()
+else:
+    print("[STARTUP] LOGGER=off — periodic status logger disabled", flush=True)
 
 print(
     f"[STARTUP] TTL_MODE={'on' if TTL_MODE else 'off'} consumer_group="
-    f"dedup-filter-stable-{CG_VERSION} "
-    f"legacy_records_ttl={_ROCKSDB_OPTS.legacy_records_ttl}",
+    f"{CONSUMER_GROUP} legacy_records_ttl={_ROCKSDB_OPTS.legacy_records_ttl}",
     flush=True,
 )
 
 app = Application(
-    consumer_group=f"dedup-filter-stable-{CG_VERSION}",
+    consumer_group=CONSUMER_GROUP,
     state_dir=STATE_DIR,
     rocksdb_options=_ROCKSDB_OPTS,
 )

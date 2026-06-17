@@ -1,2 +1,2 @@
-quixstreams @ git+https://github.com/quixio/quix-streams.git@1dfcf510a19dd69fc68a0f226f05ed4c2ce98a15
+quixstreams @ git+https://github.com/quixio/quix-streams.git@7de19fe0257ad71bb233b384be4976eec579c737
 python-dotenv

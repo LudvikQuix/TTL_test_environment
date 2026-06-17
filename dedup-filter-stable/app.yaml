@@ -8,33 +8,43 @@ variables:
     required: true
   - name: output
     inputType: OutputTopic
-    description: Topic with deduplicated events (stable-baseline pipeline)
+    description: Topic with deduplicated events
     defaultValue: deduped-events-stable
     required: true
   - name: VALUE_PADDING_BYTES
     inputType: FreeText
-    description: Pad each stored value with this many bytes (matches the TTL filter for apples-to-apples comparison).
-    defaultValue: "200"
+    description: Pad each stored value with this many bytes (apples-to-apples across filters).
+    defaultValue: "1000"
     required: false
-  - name: TTL_MODE
+  - name: CG_PREFIX
     inputType: FreeText
-    description: "0 = legacy SEEDER (no ttl=, byte-identical to 3.23.6). 1 = TTL build (ttl= writes + legacy_records_ttl -> flip+backfill). Toggle here, no code push."
-    defaultValue: "0"
+    description: Consumer-group prefix (state namespace). Per service to isolate stores.
+    defaultValue: dedup-filter-stable
     required: false
   - name: CG_VERSION
     inputType: FreeText
-    description: Consumer-group suffix (e.g. v7.8). Bump for a fresh clean store without touching code.
-    defaultValue: v7.8
+    description: Consumer-group suffix (e.g. v1). Bump for a fresh clean store, no code change.
+    defaultValue: v8.3
     required: false
-  - name: LEGACY_RECORDS_TTL_SECONDS
+  - name: TTL_MODE
     inputType: FreeText
-    description: Backfill expiry for pre-existing legacy records on flip. Set LONG (e.g. 600) when testing OP-4 so records survive the manual steps.
-    defaultValue: "5"
+    description: "0 = legacy seeder (no ttl=, byte-identical to 3.23.6). 1 = TTL build (ttl= + legacy_records_ttl -> flip+backfill)."
+    defaultValue: "0"
     required: false
   - name: STATE_TTL_SECONDS
     inputType: FreeText
-    description: Per-write ttl= for new dedup entries. Set LONG (e.g. 600) when testing OP-4 so records do not expire mid-test.
-    defaultValue: "5"
+    description: Per-write ttl= for new dedup entries, seconds (used when TTL_MODE=1).
+    defaultValue: "30"
+    required: false
+  - name: LEGACY_RECORDS_TTL_SECONDS
+    inputType: FreeText
+    description: One-time backfill TTL (seconds) for pre-existing legacy records on upgrade (used when TTL_MODE=1).
+    defaultValue: "30"
+    required: false
+  - name: LOGGER
+    inputType: FreeText
+    description: "on/off. off disables the periodic status logger (skips its per-interval rocksdb key scan). Set off in production."
+    defaultValue: "on"
     required: false
 dockerfile: build/dockerfile
 runEntryPoint: main.py

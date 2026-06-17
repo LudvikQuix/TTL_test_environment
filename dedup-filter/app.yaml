@@ -3,7 +3,7 @@ language: python
 variables:
   - name: input
     inputType: InputTopic
-    description: Topic with raw events (may contain duplicate keys)
+    description: Topic with raw events (shared input across all dedup filters)
     defaultValue: raw-events
     required: true
   - name: output
@@ -11,24 +11,39 @@ variables:
     description: Topic with deduplicated events
     defaultValue: deduped-events
     required: true
+  - name: VALUE_PADDING_BYTES
+    inputType: FreeText
+    description: Pad each stored value with this many bytes (apples-to-apples across filters).
+    defaultValue: "1000"
+    required: false
+  - name: CG_PREFIX
+    inputType: FreeText
+    description: Consumer-group prefix (state namespace). Per service to isolate stores.
+    defaultValue: dedup-filter
+    required: false
+  - name: CG_VERSION
+    inputType: FreeText
+    description: Consumer-group suffix (e.g. v1). Bump for a fresh clean store, no code change.
+    defaultValue: v1
+    required: false
+  - name: TTL_MODE
+    inputType: FreeText
+    description: "0 = legacy seeder (no ttl=, byte-identical to 3.23.6). 1 = TTL build (ttl= + legacy_records_ttl -> flip+backfill)."
+    defaultValue: "1"
+    required: false
   - name: STATE_TTL_SECONDS
     inputType: FreeText
-    description: Per-write ttl= for new dedup entries, in seconds.
+    description: Per-write ttl= for new dedup entries, seconds (used when TTL_MODE=1).
     defaultValue: "30"
     required: false
   - name: LEGACY_RECORDS_TTL_SECONDS
     inputType: FreeText
-    description: Backfill TTL (seconds) for pre-existing legacy records on upgrade. 0 = off (reject on populated store).
+    description: One-time backfill TTL (seconds) for pre-existing legacy records on upgrade (used when TTL_MODE=1).
     defaultValue: "30"
-    required: false
-  - name: VALUE_PADDING_BYTES
-    inputType: FreeText
-    description: Pad each stored value with this many bytes so TTL timestamp overhead is small relative to entry size.
-    defaultValue: "200"
     required: false
   - name: LOGGER
     inputType: FreeText
-    description: "on/off. off disables the periodic status logger (skips its per-interval rocksdb key scan). Set off in production for performance."
+    description: "on/off. off disables the periodic status logger (skips its per-interval rocksdb key scan). Set off in production."
     defaultValue: "on"
     required: false
 dockerfile: build/dockerfile
