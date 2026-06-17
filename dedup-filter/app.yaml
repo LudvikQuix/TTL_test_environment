@@ -26,6 +26,11 @@ variables:
     description: Pad each stored value with this many bytes so TTL timestamp overhead is small relative to entry size.
     defaultValue: "200"
     required: false
+  - name: LOGGER
+    inputType: FreeText
+    description: "on/off. off disables the periodic status logger (skips its per-interval rocksdb key scan). Set off in production for performance."
+    defaultValue: "on"
+    required: false
 dockerfile: build/dockerfile
 runEntryPoint: main.py
 defaultFile: main.py

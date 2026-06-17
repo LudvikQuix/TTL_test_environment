@@ -12,6 +12,9 @@ from quixstreams.state.rocksdb.options import RocksDBOptions
 STATE_DIR = os.environ.get("STATE_DIR", "state")
 STATE_SIZE_LOG_INTERVAL = int(os.environ.get("STATE_SIZE_LOG_INTERVAL", "10"))
 VALUE_PADDING_BYTES = int(os.environ.get("VALUE_PADDING_BYTES", "800"))
+# LOGGER=off disables the periodic status logger thread (avoids its per-interval
+# rocksdb key scan in production). Default "on" preserves current behavior.
+LOGGER_ENABLED = os.environ.get("LOGGER", "on").strip().lower() in ("1", "true", "yes", "on")
 
 _ROCKSDB_OPTS = RocksDBOptions(
     write_buffer_size=int(os.environ.get("ROCKSDB_WRITE_BUFFER_SIZE", str(4 * 1024 * 1024))),
@@ -64,7 +67,10 @@ def _periodic_status_logger():
         )
 
 
-threading.Thread(target=_periodic_status_logger, daemon=True).start()
+if LOGGER_ENABLED:
+    threading.Thread(target=_periodic_status_logger, daemon=True).start()
+else:
+    print("[STARTUP] LOGGER=off — periodic status logger disabled", flush=True)
 
 app = Application(
     consumer_group="dedup-filter-no-ttl-v5",

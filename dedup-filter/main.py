@@ -20,6 +20,10 @@ CONSUMER_GROUP = os.environ.get("CONSUMER_GROUP", "dedup-filter-feature-v1")
 STATE_DIR = os.environ.get("STATE_DIR", "state")
 STATE_SIZE_LOG_INTERVAL = int(os.environ.get("STATE_SIZE_LOG_INTERVAL", "10"))
 VALUE_PADDING_BYTES = int(os.environ.get("VALUE_PADDING_BYTES", "800"))
+# LOGGER=off disables the periodic status logger (the rocksdb_exact_keys full
+# key scan every interval is O(keys) — turn it off in production to avoid the
+# scan cost). Default "on" preserves current behavior.
+LOGGER_ENABLED = os.environ.get("LOGGER", "on").strip().lower() in ("1", "true", "yes", "on")
 
 # Aggressive RocksDB compaction settings so TTL-driven reclaim is visible in
 # a short test window. Defaults are 64 MB memtable / 64 MB SST.
@@ -109,7 +113,10 @@ def _periodic_status_logger():
         )
 
 
-threading.Thread(target=_periodic_status_logger, daemon=True).start()
+if LOGGER_ENABLED:
+    threading.Thread(target=_periodic_status_logger, daemon=True).start()
+else:
+    print("[STARTUP] LOGGER=off — periodic status logger disabled", flush=True)
 
 app = Application(
     consumer_group=CONSUMER_GROUP,
