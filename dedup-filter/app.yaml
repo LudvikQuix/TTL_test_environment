@@ -46,6 +46,11 @@ variables:
     description: "on/off. off disables the periodic status logger (skips its per-interval rocksdb key scan). Set off in production."
     defaultValue: "on"
     required: false
+  - name: QUIXSTREAMS_STATE_LOG_LEVEL
+    inputType: FreeText
+    description: "State-scoped log level (DEBUG/INFO/WARNING/ERROR/CRITICAL). DEBUG surfaces quixstreams.state per-flush + per-chunk backfill progress without flipping the whole app to DEBUG. Empty = inherit app loglevel."
+    defaultValue: ""
+    required: false
 dockerfile: build/dockerfile
 runEntryPoint: main.py
 defaultFile: main.py
