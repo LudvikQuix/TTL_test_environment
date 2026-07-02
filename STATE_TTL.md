@@ -5,8 +5,9 @@ State entries can now expire automatically. Pass a `ttl=` to `state.set(...)` an
 ## Install
 
 ```bash
-pip install quixstreams==3.24.1a2 \
+pip install quixstreams==3.24.1a2 
   --extra-index-url https://pkgs.dev.azure.com/quix-analytics/53f7fe95-59fe-4307-b479-2473b96de6d1/_packaging/public/pypi/simple/
+  
 ```
 
 Or in `requirements.txt`:
@@ -219,13 +220,43 @@ Everything above assumes a store that used TTL from the start. But what about a
 store that was **already running before TTL existed** (e.g. a dedup app on an
 older Quix Streams) and is now upgraded? Its records were written **without**
 `ttl=`, so they are "never expires" — and the new `ttl=` only applies to records
-written *after* the upgrade. Worse: the first `ttl=` write on such a populated
-store used to **reject** with `IncompatibleStateStoreError` ("delete the state
-directory"), which is unusable in Quix Cloud (no customer-callable state reset).
+written *after* the upgrade.
 
-`legacy_records_ttl` fixes this. Set it on `RocksDBOptions` and, on upgrade, the
-pre-existing un-stamped records are **backfilled** with a TTL in place — no state
-deletion.
+The first `ttl=` write on such a populated store triggers an automatic in-place
+migration: every pre-existing un-stamped record is backfilled with a uniform
+expiry, and the store flips into TTL mode — no state deletion, no changelog reset.
+
+`legacy_records_ttl` on `RocksDBOptions` sets the expiry window for that legacy
+cohort explicitly. Without it, the window is derived from the triggering write's
+own `ttl=` value, and the service emits a one-time `[WARNING]` naming the derived
+value.
+
+### What's new
+
+- **No rejection on first TTL write.** A populated legacy store no longer raises
+  `IncompatibleStateStoreError` when you add `ttl=`. Migration runs automatically
+  whether or not `legacy_records_ttl` is set.
+- **Implicit window when unset.** Without `legacy_records_ttl`, old records are
+  stamped with an expiry of `event-time high-water + max(ttl=)` from the
+  triggering batch, and a one-time `[WARNING]` identifies the derived window and
+  how to override it.
+- **Durable once-only flag.** Migration completion is recorded in the changelog
+  and replays with the store through any cold restore or rebuild — the backfill
+  never re-runs, even after a full state volume loss.
+- **Cold restore is self-sufficient.** If a rebuild encounters an interrupted
+  migration (some records already stamped, some not), recovery auto-completes the
+  remainder without any config changes.
+- **Clock fix.** After a rebuild, the live event-time clock is not seeded from
+  wall-clock. Writes with historical timestamps (event-time reprocessing workloads)
+  are not immediately expired after a rebuild.
+- **Crash-safe resume.** A crash mid-migration picks up exactly where it left off;
+  records written between the crash and the retry are handled correctly with no
+  double-stamping.
+- **v3.24.0 self-heal.** A store created on the earlier TTL preview (stock
+  v3.24.0) whose state is rebuilt from the changelog now self-heals automatically
+  during recovery: the existing stamped records are recognized and adopted with
+  their original TTLs intact. No config change or data loss required. (Previously:
+  corrupted reads or crash-loop on the first TTL write after rebuild.)
 
 ```python
 from datetime import timedelta
@@ -295,7 +326,7 @@ app.run()
 On startup the log shows the one-time migration:
 
 ```
-[INFO] [quixstreams] : Backfilled 1234567 legacy records and flipped state store partition into TTL mode (legacy_records_ttl)
+[INFO] [quixstreams.state] Backfilled 1234567 legacy records and flipped state store partition into TTL mode path=/state/my-dedup/0
 ```
 
 After it has run once you can drop `legacy_records_ttl` from the options again —
@@ -303,24 +334,27 @@ the store stays migrated and never re-backfills.
 
 ### How it behaves
 
-- **Opt-in, default `None`.** Unset → behavior is byte-identical to before
-  (a populated legacy store still rejects on the first `ttl=` write). Only set it
-  when you want the upgrade to migrate old data.
+- **Optional, default `None`.** The migration runs automatically on the first
+  `ttl=` write regardless of this setting. Without it, old records are stamped
+  with an implicit window of `event-time high-water + max(ttl=)` from the
+  triggering batch, and a `[WARNING]` identifies the value. Set `legacy_records_ttl`
+  explicitly to choose a *different* uniform expiry window for the legacy cohort.
 - **Activation gate — only when your code actually uses `ttl=`.** Setting the
   option alone does nothing. The store only migrates when the application
   performs a real `state.set(..., ttl=...)`. No `ttl=` in your code ⇒ the store
   stays legacy and the option is inert.
 - **What happens on the first `ttl=` write** (decided at flush):
-  - store already migrated (`__ttl_enabled__` set) → nothing, never re-runs;
+  - store already migrated → nothing, never re-runs;
   - **empty** store → clean flip, nothing to backfill;
   - **populated** + `legacy_records_ttl` set → **backfill** every pre-existing
-    record with the TTL, then flip into TTL mode;
-  - **populated** + `legacy_records_ttl` unset → reject (with a message pointing
-    at `legacy_records_ttl`).
-- **One-time, set-once-then-remove.** Backfill is durable (the re-stamped values
-  are written to the changelog too), so once it has run you can remove the option
-  again — it never re-backfills. The `__ttl_enabled__` flag guarantees it runs
-  exactly once in the store's lifetime.
+    record with `high_water + legacy_records_ttl`, then flip into TTL mode;
+  - **populated** + `legacy_records_ttl` unset → **auto-migrate** using
+    `high_water + max(ttl=)` from the triggering batch as the implicit window; a
+    one-time `[WARNING]` names the derived value and how to override it.
+- **One-time, set-once-then-remove.** Backfill is durable — the re-stamped values
+  and a migration-done marker are written to the changelog, so the migration
+  survives any restart or full cold restore. Once it has run you can remove the
+  option on the next deploy; the store stays migrated and never re-backfills.
 - **Bounded memory.** Backfill runs in chunks
   (`RocksDBOptions.legacy_backfill_chunk_size`, default `10_000`), so peak memory
   is one chunk regardless of store size — a multi-million-record store migrates
@@ -335,16 +369,22 @@ the store stays migrated and never re-backfills.
 ### Reference clock — when do migrated records expire?
 
 Legacy records carry **no original timestamp**, so their true age is
-unrecoverable. They are all stamped to expire `legacy_records_ttl` after the
-**enable moment**, measured in **event time** (the stream's high-water mark) —
-not after each record's real age. So they drain together once the stream's event
-time advances `legacy_records_ttl` past the upgrade. Because expiry is event-time
-based, the count only drains while **new messages keep arriving**; an idle stream
-freezes the clock and nothing expires until traffic resumes.
+unrecoverable. They are all stamped to expire `legacy_records_ttl` (or the
+derived implicit window) after the **enable moment**, measured in **event time**
+(the stream's high-water mark) — not after each record's real age. So they drain
+together once the stream's event time advances that window past the upgrade.
+Because expiry is event-time based, the count only drains while **new messages
+keep arriving**; an idle stream freezes the clock and nothing expires until
+traffic resumes.
 
-On a **cold restore** (state volume lost, rebuilt from the changelog), expiry is
-judged against **wall-clock at rebuild time** rather than a stamp-derived clock,
-so migrated records don't collapse to one on replay.
+On a **cold restore** (state volume lost, rebuilt from the changelog), the
+**drop filter during replay** judges already-expired records against **wall-clock
+at rebuild time**, so genuinely-expired records are discarded while records whose
+TTL window has not yet passed are kept. After the rebuild, the live event-time
+clock starts from the first message processed — it is **not** seeded from
+wall-clock. A reprocessing workload replaying historical data is not affected by
+when the rebuild ran; writes with old event-time timestamps expire relative to
+their own timestamps, not relative to today's wall-clock.
 
 ## Notes
 
