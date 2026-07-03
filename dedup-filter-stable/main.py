@@ -37,6 +37,10 @@ def _envflag(name: str, default: str = "0") -> bool:
 
 
 TTL_MODE = _envflag("TTL_MODE", "1")
+# Sweep changelog tombstones (bcd7cccd build): 1 = expired keys are also
+# deleted from the changelog topic (compaction shrinks it); 0 = old behavior,
+# local-only sweep, changelog keeps every record.
+TTL_CHANGELOG_TOMBSTONES = _envflag("TTL_CHANGELOG_TOMBSTONES", "1")
 LOGGER_ENABLED = _envflag("LOGGER", "on")
 CG_PREFIX = os.environ.get("CG_PREFIX", "dedup-filter").strip()
 CG_VERSION = os.environ.get("CG_VERSION", "v1").strip()
@@ -57,6 +61,7 @@ _ROCKSDB_OPTS = RocksDBOptions(
         if (TTL_MODE and LEGACY_RECORDS_TTL_SECONDS > 0)
         else None
     ),
+    ttl_changelog_tombstones=TTL_CHANGELOG_TOMBSTONES,
 )
 
 _PADDING = "x" * VALUE_PADDING_BYTES
@@ -137,7 +142,8 @@ else:
 
 print(
     f"[STARTUP] TTL_MODE={'on' if TTL_MODE else 'off'} consumer_group="
-    f"{CONSUMER_GROUP} legacy_records_ttl={_ROCKSDB_OPTS.legacy_records_ttl}",
+    f"{CONSUMER_GROUP} legacy_records_ttl={_ROCKSDB_OPTS.legacy_records_ttl} "
+    f"ttl_changelog_tombstones={'on' if TTL_CHANGELOG_TOMBSTONES else 'off'}",
     flush=True,
 )
 

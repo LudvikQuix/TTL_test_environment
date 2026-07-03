@@ -46,6 +46,36 @@ variables:
     description: "on/off. off disables the periodic status logger (skips its per-interval rocksdb key scan). Set off in production."
     defaultValue: "on"
     required: false
+  - name: TTL_CHANGELOG_TOMBSTONES
+    inputType: FreeText
+    description: "1 = TTL sweep also deletes expired keys from the changelog topic (compaction shrinks it). 0 = local-only sweep, changelog keeps every record."
+    defaultValue: "1"
+    required: false
+  - name: QUIXSTREAMS_STATE_LOG_LEVEL
+    inputType: FreeText
+    description: Log level for the quixstreams state layer (DEBUG shows per-chunk backfill/migration progress).
+    defaultValue: INFO
+    required: false
+  - name: STATE_SIZE_LOG_INTERVAL
+    inputType: FreeText
+    description: Seconds between periodic [STATE-SIZE-STABLE] status lines (when LOGGER=on).
+    defaultValue: "10"
+    required: false
+  - name: ROCKSDB_WRITE_BUFFER_SIZE
+    inputType: FreeText
+    description: RocksDB write buffer size in bytes (memtable). Test-env tuning knob.
+    defaultValue: "4194304"
+    required: false
+  - name: ROCKSDB_TARGET_FILE_SIZE_BASE
+    inputType: FreeText
+    description: RocksDB target SST file size in bytes. Test-env tuning knob.
+    defaultValue: "2097152"
+    required: false
+  - name: ROCKSDB_MAX_WRITE_BUFFER_NUMBER
+    inputType: FreeText
+    description: Max RocksDB write buffers (memtables) per store partition.
+    defaultValue: "2"
+    required: false
 dockerfile: build/dockerfile
 runEntryPoint: main.py
 defaultFile: main.py
