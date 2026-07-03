@@ -27,9 +27,10 @@ from quixstreams.state.rocksdb.options import RocksDBOptions
 #   LOGGER     : "on"/"off". off disables the periodic status logger (skips its
 #                per-interval O(keys) rocksdb scan) — set off in production.
 #
-# The image always installs the sc-73191 build (header-signal fix + OP-4 +
-# backfill progress logging); the backfill STARTED/progress/FINISHED logs come
-# from quix-streams and show regardless of LOGGER.
+# The image installs the sc-73191 build @bcd7cccd (crash-window fixes: expired-
+# replay supersession, offset-caught-up completion, EOS migration producer; plus
+# sweep changelog tombstones + progress-based backfill flush). The backfill
+# STARTED/progress/FINISHED logs come from quix-streams regardless of LOGGER.
 # ---------------------------------------------------------------------------
 def _envflag(name: str, default: str = "0") -> bool:
     return os.environ.get(name, default).strip().lower() in ("1", "true", "yes", "on")
