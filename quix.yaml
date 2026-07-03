@@ -14,7 +14,7 @@ deployments:
       limits:
         cpu: 200
         memory: 200
-    desiredStatus: Running
+    desiredStatus: Stopped
     variables:
       - name: output
         inputType: OutputTopic
@@ -121,29 +121,37 @@ deployments:
         value: raw-events
       - name: output
         inputType: OutputTopic
-        description: Topic with deduplicated events (stable-baseline pipeline)
+        description: Topic with deduplicated events
         required: true
         value: deduped-events-stable
       - name: VALUE_PADDING_BYTES
         inputType: FreeText
-        description: Pad each stored value with this many bytes (matches the TTL filter for apples-to-apples comparison).
+        description: Pad each stored value with this many bytes (apples-to-apples across filters).
         value: 1000
-      - name: TTL_MODE
+      - name: CG_PREFIX
         inputType: FreeText
-        description: 0 = legacy SEEDER (no ttl=, byte-identical to 3.23.6). 1 = TTL build (ttl= writes + legacy_records_ttl -> flip+backfill). Toggle here, no code push.
-        value: 1
+        description: Consumer-group prefix (state namespace). Per service to isolate stores.
+        value: dedup-filter-stable
       - name: CG_VERSION
         inputType: FreeText
-        description: Consumer-group suffix (e.g. v7.8). Bump for a fresh clean store without touching code.
-        value: v8.3
-      - name: LEGACY_RECORDS_TTL_SECONDS
+        description: Consumer-group suffix (e.g. v1). Bump for a fresh clean store, no code change.
+        value: v8.4
+      - name: TTL_MODE
         inputType: FreeText
-        description: Backfill expiry for pre-existing legacy records on flip. Set LONG (e.g. 600) when testing OP-4 so records survive the manual steps.
-        value: 60
+        description: 0 = legacy seeder (no ttl=, byte-identical to 3.23.6). 1 = TTL build (ttl= + legacy_records_ttl -> flip+backfill).
+        value: 1
       - name: STATE_TTL_SECONDS
         inputType: FreeText
-        description: Per-write ttl= for new dedup entries. Set LONG (e.g. 600) when testing OP-4 so records do not expire mid-test.
+        description: Per-write ttl= for new dedup entries, seconds (used when TTL_MODE=1).
         value: 60
+      - name: LEGACY_RECORDS_TTL_SECONDS
+        inputType: FreeText
+        description: One-time backfill TTL (seconds) for pre-existing legacy records on upgrade (used when TTL_MODE=1).
+        value: 60
+      - name: LOGGER
+        inputType: FreeText
+        description: on/off. off disables the periodic status logger (skips its per-interval rocksdb key scan). Set off in production.
+        value: on
   - name: TTL Verify Generator
     application: ttl-verify-generator
     version: latest
