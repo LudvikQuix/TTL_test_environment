@@ -32,7 +32,7 @@ deployments:
       - name: SLEEP_SECONDS
         inputType: FreeText
         description: Delay between messages in seconds. Default 0.01 = ~100 msg/s.
-        value: 0.0003
+        value: 0.0001
       - name: SEED
         inputType: FreeText
         description: Optional integer seed for random. Set to make the sequence reproducible.
@@ -112,7 +112,7 @@ deployments:
       enabled: true
       size: 1
       path: /app/state
-    desiredStatus: Stopped
+    desiredStatus: Running
     variables:
       - name: input
         inputType: InputTopic
