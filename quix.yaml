@@ -210,7 +210,7 @@ deployments:
         value: recovery-input
       - name: output
         inputType: OutputTopic
-        description: Topic with count-enriched messages.
+        description: Topic with deduplicated ON/OFF status events (only changes or TTL-expired repeats pass through).
         required: true
         value: recovery-output
       - name: AUTO_RECOVER
@@ -236,7 +236,7 @@ deployments:
       - name: TTL_MODE
         inputType: FreeText
         description: on/off. on = per-key state entries expire after STATE_TTL_SECONDS. off = state persists indefinitely (default, unchanged behavior).
-        value: on
+        value: off
       - name: STATE_TTL_SECONDS
         inputType: FreeText
         description: Seconds before a per-key state entry expires (used only when TTL_MODE=on).
@@ -244,7 +244,7 @@ deployments:
       - name: CONSUMER_GROUP
         inputType: FreeText
         description: Kafka consumer group id for this deployment. Change this to reset consumption/offsets independently across deployment updates.
-        value: recovery-filter-v1
+        value: recovery-filter-v1.0
   - name: Dedup Filter BackFill
     group: v1.1
     application: dedup-filter-stable
