@@ -16,6 +16,7 @@ STATE_DIR = os.environ.get("STATE_DIR", "state")
 STATE_SIZE_LOG_INTERVAL = int(os.environ.get("STATE_SIZE_LOG_INTERVAL", "10"))
 TTL_MODE = os.environ.get("TTL_MODE", "off").strip().lower() in ("1", "true", "yes", "on")
 STATE_TTL_SECONDS = int(os.environ.get("STATE_TTL_SECONDS", "30"))
+CONSUMER_GROUP = os.environ.get("CONSUMER_GROUP", "recovery-filter-v1")
 
 
 def resolve_logger_level(raw: str) -> str:
@@ -177,7 +178,8 @@ def main():
         f"[RECOVERY-FILTER] mode=dedup-on-off "
         f"auto_recover_from_source_offset_out_of_range={AUTO_RECOVER} "
         f"state_recovery_offset_reset={OFFSET_RESET} ttl_mode={TTL_MODE} "
-        f"state_ttl_seconds={STATE_TTL_SECONDS} logger_level={LOGGER_LEVEL}",
+        f"state_ttl_seconds={STATE_TTL_SECONDS} logger_level={LOGGER_LEVEL} "
+        f"consumer_group={CONSUMER_GROUP}",
         flush=True,
     )
 
@@ -193,7 +195,7 @@ def main():
     )
 
     app = Application(
-        consumer_group="recovery-filter-v1",
+        consumer_group=CONSUMER_GROUP,
         state_dir=STATE_DIR,
         auto_offset_reset="earliest",
         auto_recover_from_source_offset_out_of_range=AUTO_RECOVER,

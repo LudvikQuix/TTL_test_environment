@@ -241,6 +241,10 @@ deployments:
         inputType: FreeText
         description: Seconds before a per-key state entry expires (used only when TTL_MODE=on).
         value: 15
+      - name: CONSUMER_GROUP
+        inputType: FreeText
+        description: Kafka consumer group id for this deployment. Change this to reset consumption/offsets independently across deployment updates.
+        value: recovery-filter-v1
   - name: Dedup Filter BackFill
     group: v1.1
     application: dedup-filter-stable

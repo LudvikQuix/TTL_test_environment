@@ -46,6 +46,11 @@ variables:
     description: "Seconds before a per-key state entry expires (used only when TTL_MODE=on)."
     defaultValue: "30"
     required: false
+  - name: CONSUMER_GROUP
+    inputType: FreeText
+    description: "Kafka consumer group id for this deployment. Change this to reset consumption/offsets independently across deployment updates."
+    defaultValue: "recovery-filter-v1"
+    required: false
 dockerfile: build/dockerfile
 runEntryPoint: main.py
 defaultFile: main.py
