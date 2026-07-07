@@ -46,6 +46,7 @@ LOGGER_LEVEL = resolve_logger_level(os.environ.get("LOGGER", "info"))
 # state shrinkage is observable.
 _pass_count = [0]
 _block_count = [0]
+_skip_count = [0]
 
 # Set to the running Application instance by main(); read by
 # _rocksdb_est_keys()/_rocksdb_exact_keys() from the periodic status logger
@@ -107,7 +108,8 @@ def _periodic_status_logger():
         print(
             f"[STATE-SIZE-RECOVERY] bytes={size} ({size/1024:.1f} KiB) "
             f"rocksdb_exact_keys={exact} rocksdb_est_keys={est} "
-            f"pass_count={_pass_count[0]} block_count={_block_count[0]}",
+            f"pass_count={_pass_count[0]} block_count={_block_count[0]} "
+            f"skip_count={_skip_count[0]}",
             flush=True,
         )
 
@@ -119,8 +121,30 @@ def decide(stored_status, new_status: str) -> bool:
     return stored_status != new_status
 
 
+def resolve_new_status(value: dict):
+    """Safely read the "status" field. Legacy messages produced before
+    recovery-generator added the ON/OFF status field only have
+    seq/ts/pad, so this returns None instead of raising KeyError."""
+    return value.get("status")
+
+
+def should_process(new_status) -> bool:
+    """False when there's no status to evaluate (legacy message) — such
+    messages should be skipped rather than passed or blocked."""
+    return new_status is not None
+
+
 def dedup_filter(value, key, timestamp, headers, state):
-    new_status = value["status"]
+    new_status = resolve_new_status(value)
+    if not should_process(new_status):
+        _skip_count[0] += 1
+        if LOGGER_LEVEL != "off":
+            print(
+                f"[RECOVERY-FILTER] skipping legacy message without status field "
+                f"(key={key}, timestamp={timestamp})",
+                flush=True,
+            )
+        return False
     stored_status = state.get("status")
     passed = decide(stored_status, new_status)
     if passed:

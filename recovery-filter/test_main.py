@@ -1,6 +1,12 @@
 from datetime import timedelta
 
-from main import decide, resolve_logger_level, resolve_ttl_kwargs
+from main import (
+    decide,
+    resolve_logger_level,
+    resolve_new_status,
+    resolve_ttl_kwargs,
+    should_process,
+)
 
 
 def test_resolve_ttl_kwargs_off():
@@ -46,3 +52,26 @@ def test_decide_same_status_blocks():
 
 def test_decide_changed_status_passes():
     assert decide("ON", "OFF") is True
+
+
+def test_resolve_new_status_missing_field_returns_none():
+    # RED: legacy messages produced before recovery-generator added the
+    # "status" field only have seq/ts/pad — value["status"] would raise
+    # KeyError. resolve_new_status() must safely return None instead.
+    assert resolve_new_status({"seq": 1, "ts": 123, "pad": "x"}) is None
+
+
+def test_resolve_new_status_present_returns_status():
+    assert resolve_new_status({"status": "ON", "seq": 1}) == "ON"
+    assert resolve_new_status({"status": "OFF"}) == "OFF"
+
+
+def test_should_process_none_is_false():
+    # GREEN: a missing status means the message should be skipped, not
+    # passed and not blocked.
+    assert should_process(None) is False
+
+
+def test_should_process_real_status_is_true():
+    assert should_process("ON") is True
+    assert should_process("OFF") is True
