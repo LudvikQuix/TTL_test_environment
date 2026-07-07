@@ -41,12 +41,15 @@ def resolve_ttl_kwargs(ttl_mode: bool, ttl_seconds: int) -> dict:
 
 LOGGER_LEVEL = resolve_logger_level(os.environ.get("LOGGER", "info"))
 
-# Keys seen since process start; reported as live_entries so a destructive
-# state recovery (counts restarting from 1) is visible next to RocksDB size.
-_live_keys: set = set()
+# Pass/block counters since process start, mutated inside the nested
+# dedup_filter closure; reported next to RocksDB key counts so TTL-driven
+# state shrinkage is observable.
+_pass_count = [0]
+_block_count = [0]
 
 # Set to the running Application instance by main(); read by
-# _rocksdb_num_keys() from the periodic status logger thread.
+# _rocksdb_est_keys()/_rocksdb_exact_keys() from the periodic status logger
+# thread.
 app = None
 
 
@@ -61,22 +64,35 @@ def _dir_size_bytes(path: str) -> int:
     return total
 
 
-def _rocksdb_num_keys() -> int:
-    """Sum 'rocksdb.estimate-num-keys' across every open state partition.
+def _iter_partitions():
+    for stream_stores in app._state_manager.stores.values():
+        for store in stream_stores.values():
+            for partition in store.partitions.values():
+                yield partition
 
-    Includes tombstones / not-yet-compacted entries, so it can be larger than
-    the logical live count and will visibly drop after a compaction.
-    """
+
+def _rocksdb_est_keys() -> int:
+    """RocksDB's own key estimate across partitions — cheap, persists across
+    restarts. Includes tombstones / not-yet-compacted entries, so it lags
+    logical deletes."""
     try:
         total = 0
-        for topic_stores in app._state_manager.stores.values():
-            for store in topic_stores.values():
-                for partition in store.partitions.values():
-                    n = partition._db.property_int_value(
-                        "rocksdb.estimate-num-keys"
-                    )
-                    if n is not None:
-                        total += int(n)
+        for partition in _iter_partitions():
+            n = partition._db.property_int_value("rocksdb.estimate-num-keys")
+            if n is not None:
+                total += int(n)
+        return total
+    except Exception:
+        return -1
+
+
+def _rocksdb_exact_keys() -> int:
+    """Exact count of keys in the default CF across partitions — the real
+    persisted entry count. O(keys); fine at test scale."""
+    try:
+        total = 0
+        for partition in _iter_partitions():
+            total += sum(1 for _ in partition._db.keys())
         return total
     except Exception:
         return -1
@@ -86,25 +102,39 @@ def _periodic_status_logger():
     while True:
         time.sleep(STATE_SIZE_LOG_INTERVAL)
         size = _dir_size_bytes(STATE_DIR)
-        rocks_keys = _rocksdb_num_keys()
+        exact = _rocksdb_exact_keys()
+        est = _rocksdb_est_keys()
         print(
             f"[STATE-SIZE-RECOVERY] bytes={size} ({size/1024:.1f} KiB) "
-            f"live_entries={len(_live_keys)} rocksdb_keys={rocks_keys}",
+            f"rocksdb_exact_keys={exact} rocksdb_est_keys={est} "
+            f"pass_count={_pass_count[0]} block_count={_block_count[0]}",
             flush=True,
         )
 
 
-def count_per_key(value, key, timestamp, headers, state):
-    count = state.get("count", 0) + 1
-    state.set("count", count, **resolve_ttl_kwargs(TTL_MODE, STATE_TTL_SECONDS))
-    value["count"] = count
-    _live_keys.add(key)
+def decide(stored_status, new_status: str) -> bool:
+    """Pass (True) if the status changed from what's stored (or nothing was
+    stored yet — including after TTL expiry, since an expired key's
+    state.get() returns None). Block (False) if it's the same as stored."""
+    return stored_status != new_status
+
+
+def dedup_filter(value, key, timestamp, headers, state):
+    new_status = value["status"]
+    stored_status = state.get("status")
+    passed = decide(stored_status, new_status)
+    if passed:
+        state.set("status", new_status, **resolve_ttl_kwargs(TTL_MODE, STATE_TTL_SECONDS))
+        _pass_count[0] += 1
+    else:
+        _block_count[0] += 1
     if LOGGER_LEVEL == "debug":
         print(
-            f"[DEBUG-RECOVERY] key={key} count={count} ttl_mode={TTL_MODE}",
+            f"[DEBUG-RECOVERY] key={key} stored={stored_status} new={new_status} "
+            f"decision={'PASS' if passed else 'BLOCK'} ttl_mode={TTL_MODE}",
             flush=True,
         )
-    return value
+    return passed
 
 
 def main():
@@ -120,7 +150,8 @@ def main():
         print("[STARTUP] LOGGER=off — periodic status logger disabled", flush=True)
 
     print(
-        f"[RECOVERY-FILTER] auto_recover_from_source_offset_out_of_range={AUTO_RECOVER} "
+        f"[RECOVERY-FILTER] mode=dedup-on-off "
+        f"auto_recover_from_source_offset_out_of_range={AUTO_RECOVER} "
         f"state_recovery_offset_reset={OFFSET_RESET} ttl_mode={TTL_MODE} "
         f"state_ttl_seconds={STATE_TTL_SECONDS} logger_level={LOGGER_LEVEL}",
         flush=True,
@@ -148,7 +179,7 @@ def main():
     output_topic = app.topic(OUTPUT_TOPIC, value_serializer="json")
 
     sdf = app.dataframe(input_topic)
-    sdf = sdf.apply(count_per_key, stateful=True, metadata=True)
+    sdf = sdf.filter(dedup_filter, stateful=True, metadata=True)
     sdf = sdf.to_topic(output_topic)
 
     app.run()

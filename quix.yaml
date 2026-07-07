@@ -186,6 +186,10 @@ deployments:
         inputType: FreeText
         description: Key space size; keys are key-{seq % KEY_COUNT}.
         value: 1000
+      - name: FLIP_PROBABILITY
+        inputType: FreeText
+        description: "Probability (0.0-1.0) that a key's ON/OFF status flips on a given occurrence of that key; otherwise it holds its previous status."
+        value: "0.05"
   - name: Recovery Filter
     application: recovery-filter
     version: latest

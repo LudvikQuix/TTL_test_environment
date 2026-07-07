@@ -21,6 +21,11 @@ variables:
     description: Key space size; keys are key-{seq % KEY_COUNT}.
     defaultValue: "1000"
     required: false
+  - name: FLIP_PROBABILITY
+    inputType: FreeText
+    description: "Probability (0.0-1.0) that a key's ON/OFF status flips on a given occurrence of that key; otherwise it holds its previous status."
+    defaultValue: "0.05"
+    required: false
 dockerfile: build/dockerfile
 runEntryPoint: main.py
 defaultFile: main.py

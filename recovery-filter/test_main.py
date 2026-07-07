@@ -1,6 +1,6 @@
 from datetime import timedelta
 
-from main import resolve_logger_level, resolve_ttl_kwargs
+from main import decide, resolve_logger_level, resolve_ttl_kwargs
 
 
 def test_resolve_ttl_kwargs_off():
@@ -33,3 +33,16 @@ def test_resolve_logger_level_case_insensitive():
     assert resolve_logger_level("DEBUG") == "debug"
     assert resolve_logger_level("Off") == "off"
     assert resolve_logger_level("ON") == "info"
+
+
+def test_decide_no_stored_status_passes():
+    assert decide(None, "ON") is True
+
+
+def test_decide_same_status_blocks():
+    assert decide("ON", "ON") is False
+    assert decide("OFF", "OFF") is False
+
+
+def test_decide_changed_status_passes():
+    assert decide("ON", "OFF") is True

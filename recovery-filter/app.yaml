@@ -8,7 +8,7 @@ variables:
     required: true
   - name: output
     inputType: OutputTopic
-    description: Topic with count-enriched messages.
+    description: Topic with deduplicated ON/OFF status events (only changes or TTL-expired repeats pass through).
     defaultValue: recovery-output
     required: true
   - name: AUTO_RECOVER
