@@ -167,7 +167,7 @@ deployments:
       limits:
         cpu: 200
         memory: 200
-    desiredStatus: Stopped
+    desiredStatus: Running
     variables:
       - name: output
         inputType: OutputTopic
@@ -227,8 +227,8 @@ deployments:
     deploymentType: Service
     resources:
       limits:
-        cpu: 200
-        memory: 1000
+        cpu: 500
+        memory: 2000
     state:
       enabled: true
       size: 1
@@ -260,7 +260,7 @@ deployments:
       - name: TTL_MODE
         inputType: FreeText
         description: 0 = legacy seeder (no ttl=, byte-identical to 3.23.6). 1 = TTL build (ttl= + legacy_records_ttl -> flip+backfill).
-        value: 0
+        value: 1
       - name: STATE_TTL_SECONDS
         inputType: FreeText
         description: Per-write ttl= for new dedup entries, seconds (used when TTL_MODE=1).
