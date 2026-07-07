@@ -217,6 +217,9 @@ deployments:
         inputType: FreeText
         description: Maps to state_recovery_offset_reset. One of earliest | latest | match.
         value: earliest
+      - name: LOGGER
+        inputType: FreeText
+        value: "on"
   - name: Dedup Filter BackFill
     group: v1.1
     application: dedup-filter-stable
