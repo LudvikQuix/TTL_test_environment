@@ -185,7 +185,7 @@ deployments:
       - name: KEY_COUNT
         inputType: FreeText
         description: Key space size; keys are key-{seq % KEY_COUNT}.
-        value: 1000
+        value: 10
   - name: Recovery Filter
     application: recovery-filter
     version: latest
@@ -305,3 +305,4 @@ topics:
   - name: ttl-verify-feature-out
   - name: ttl-verify-stable-out
   - name: recovery-output
+  - name: recovery-input
