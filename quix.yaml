@@ -197,7 +197,7 @@ deployments:
     state:
       enabled: true
       size: 1
-    desiredStatus: Stopped
+    desiredStatus: Running
     variables:
       - name: input
         inputType: InputTopic
@@ -219,7 +219,7 @@ deployments:
         value: earliest
       - name: LOGGER
         inputType: FreeText
-        value: "on"
+        value: on
   - name: Dedup Filter BackFill
     group: v1.1
     application: dedup-filter-stable
