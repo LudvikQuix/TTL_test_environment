@@ -24,7 +24,7 @@ deployments:
       - name: KEY_SPACE
         inputType: FreeText
         description: Upper bound for random order IDs (1..KEY_SPACE). Larger = more unique keys = faster state growth downstream.
-        value: 100000
+        value: 150000
       - name: MESSAGE_COUNT
         inputType: FreeText
         description: Total messages to produce, then exit. 0 = run forever (Service mode).
