@@ -185,7 +185,7 @@ deployments:
       - name: KEY_COUNT
         inputType: FreeText
         description: Key space size; keys are key-{seq % KEY_COUNT}.
-        value: 10
+        value: 1000
   - name: Recovery Filter
     application: recovery-filter
     version: latest
@@ -219,13 +219,13 @@ deployments:
         value: earliest
       - name: LOGGER
         inputType: FreeText
-        value: "info"
+        value: info
       - name: TTL_MODE
         inputType: FreeText
-        value: "off"
+        value: off
       - name: STATE_TTL_SECONDS
         inputType: FreeText
-        value: "30"
+        value: 30
   - name: Dedup Filter BackFill
     group: v1.1
     application: dedup-filter-stable
