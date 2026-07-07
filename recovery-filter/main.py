@@ -15,6 +15,7 @@ AUTO_RECOVER = os.environ.get("AUTO_RECOVER", "true").lower() == "true"
 OFFSET_RESET = os.environ.get("OFFSET_RESET", "earliest")
 STATE_DIR = os.environ.get("STATE_DIR", "state")
 STATE_SIZE_LOG_INTERVAL = int(os.environ.get("STATE_SIZE_LOG_INTERVAL", "10"))
+LOGGER_ENABLED = os.environ.get("LOGGER", "on").lower() == "on"
 
 # Must match recovery-generator/main.py exactly so whichever app starts first
 # creates the topic with the aggressive retention the test depends on.
@@ -73,7 +74,10 @@ def _periodic_status_logger():
         )
 
 
-threading.Thread(target=_periodic_status_logger, daemon=True).start()
+if LOGGER_ENABLED:
+    threading.Thread(target=_periodic_status_logger, daemon=True).start()
+else:
+    print("[STARTUP] LOGGER=off — periodic status logger disabled", flush=True)
 
 print(
     f"[RECOVERY-FILTER] auto_recover_from_source_offset_out_of_range={AUTO_RECOVER} "

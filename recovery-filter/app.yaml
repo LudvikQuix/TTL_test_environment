@@ -31,6 +31,11 @@ variables:
     description: Seconds between [STATE-SIZE-RECOVERY] log lines.
     defaultValue: "10"
     required: false
+  - name: LOGGER
+    inputType: FreeText
+    description: "on/off. off disables the periodic [STATE-SIZE-RECOVERY] status logger (skips its per-interval rocksdb key scan). Set off in production."
+    defaultValue: "on"
+    required: false
 dockerfile: build/dockerfile
 runEntryPoint: main.py
 defaultFile: main.py
