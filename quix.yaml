@@ -167,7 +167,7 @@ deployments:
       limits:
         cpu: 200
         memory: 200
-    desiredStatus: Running
+    desiredStatus: Stopped
     variables:
       - name: output
         inputType: OutputTopic
@@ -236,7 +236,7 @@ deployments:
       - name: TTL_MODE
         inputType: FreeText
         description: on/off. on = per-key state entries expire after STATE_TTL_SECONDS. off = state persists indefinitely (default, unchanged behavior).
-        value: off
+        value: on
       - name: STATE_TTL_SECONDS
         inputType: FreeText
         description: Seconds before a per-key state entry expires (used only when TTL_MODE=on).
