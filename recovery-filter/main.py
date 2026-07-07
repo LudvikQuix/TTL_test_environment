@@ -1,13 +1,12 @@
+import logging
 import os
 import threading
 import time
+from datetime import timedelta
 
 from dotenv import load_dotenv
 
 load_dotenv()
-
-from quixstreams import Application
-from quixstreams.models import TopicConfig
 
 INPUT_TOPIC = os.environ.get("input", "recovery-input")
 OUTPUT_TOPIC = os.environ.get("output", "recovery-output")
@@ -15,19 +14,40 @@ AUTO_RECOVER = os.environ.get("AUTO_RECOVER", "true").lower() == "true"
 OFFSET_RESET = os.environ.get("OFFSET_RESET", "earliest")
 STATE_DIR = os.environ.get("STATE_DIR", "state")
 STATE_SIZE_LOG_INTERVAL = int(os.environ.get("STATE_SIZE_LOG_INTERVAL", "10"))
-LOGGER_ENABLED = os.environ.get("LOGGER", "on").lower() == "on"
+TTL_MODE = os.environ.get("TTL_MODE", "off").strip().lower() in ("1", "true", "yes", "on")
+STATE_TTL_SECONDS = int(os.environ.get("STATE_TTL_SECONDS", "30"))
 
-# Must match recovery-generator/main.py exactly so whichever app starts first
-# creates the topic with the aggressive retention the test depends on.
-_TOPIC_CONFIG = TopicConfig(
-    num_partitions=1,
-    replication_factor=1,
-    extra_config={"segment.ms": "60000", "retention.ms": "120000"},
-)
+
+def resolve_logger_level(raw: str) -> str:
+    """Normalize the LOGGER env var into one of 'off' | 'info' | 'debug'.
+
+    Legacy 'on' maps to 'info' for backward compatibility. Anything
+    unrecognized safely falls back to 'info' instead of crashing.
+    """
+    value = (raw or "").strip().lower()
+    if value == "on":
+        return "info"
+    if value in ("off", "info", "debug"):
+        return value
+    return "info"
+
+
+def resolve_ttl_kwargs(ttl_mode: bool, ttl_seconds: int) -> dict:
+    """Return the kwargs to pass to state.set() for the given TTL config."""
+    if ttl_mode:
+        return {"ttl": timedelta(seconds=ttl_seconds)}
+    return {}
+
+
+LOGGER_LEVEL = resolve_logger_level(os.environ.get("LOGGER", "info"))
 
 # Keys seen since process start; reported as live_entries so a destructive
 # state recovery (counts restarting from 1) is visible next to RocksDB size.
 _live_keys: set = set()
+
+# Set to the running Application instance by main(); read by
+# _rocksdb_num_keys() from the periodic status logger thread.
+app = None
 
 
 def _dir_size_bytes(path: str) -> int:
@@ -74,40 +94,65 @@ def _periodic_status_logger():
         )
 
 
-if LOGGER_ENABLED:
-    threading.Thread(target=_periodic_status_logger, daemon=True).start()
-else:
-    print("[STARTUP] LOGGER=off — periodic status logger disabled", flush=True)
-
-print(
-    f"[RECOVERY-FILTER] auto_recover_from_source_offset_out_of_range={AUTO_RECOVER} "
-    f"state_recovery_offset_reset={OFFSET_RESET}",
-    flush=True,
-)
-
-app = Application(
-    consumer_group="recovery-filter-v1",
-    state_dir=STATE_DIR,
-    auto_offset_reset="earliest",
-    auto_recover_from_source_offset_out_of_range=AUTO_RECOVER,
-    state_recovery_offset_reset=OFFSET_RESET,
-)
-input_topic = app.topic(INPUT_TOPIC, value_deserializer="json", config=_TOPIC_CONFIG)
-output_topic = app.topic(OUTPUT_TOPIC, value_serializer="json")
-
-sdf = app.dataframe(input_topic)
-
-
 def count_per_key(value, key, timestamp, headers, state):
     count = state.get("count", 0) + 1
-    state.set("count", count)
+    state.set("count", count, **resolve_ttl_kwargs(TTL_MODE, STATE_TTL_SECONDS))
     value["count"] = count
     _live_keys.add(key)
+    if LOGGER_LEVEL == "debug":
+        print(
+            f"[DEBUG-RECOVERY] key={key} count={count} ttl_mode={TTL_MODE}",
+            flush=True,
+        )
     return value
 
 
-sdf = sdf.apply(count_per_key, stateful=True, metadata=True)
-sdf = sdf.to_topic(output_topic)
+def main():
+    global app
+
+    logging.getLogger("quixstreams").setLevel(
+        logging.DEBUG if LOGGER_LEVEL == "debug" else logging.INFO
+    )
+
+    if LOGGER_LEVEL != "off":
+        threading.Thread(target=_periodic_status_logger, daemon=True).start()
+    else:
+        print("[STARTUP] LOGGER=off — periodic status logger disabled", flush=True)
+
+    print(
+        f"[RECOVERY-FILTER] auto_recover_from_source_offset_out_of_range={AUTO_RECOVER} "
+        f"state_recovery_offset_reset={OFFSET_RESET} ttl_mode={TTL_MODE} "
+        f"state_ttl_seconds={STATE_TTL_SECONDS} logger_level={LOGGER_LEVEL}",
+        flush=True,
+    )
+
+    from quixstreams import Application
+    from quixstreams.models import TopicConfig
+
+    # Must match recovery-generator/main.py exactly so whichever app starts first
+    # creates the topic with the aggressive retention the test depends on.
+    topic_config = TopicConfig(
+        num_partitions=1,
+        replication_factor=1,
+        extra_config={"segment.ms": "60000", "retention.ms": "120000"},
+    )
+
+    app = Application(
+        consumer_group="recovery-filter-v1",
+        state_dir=STATE_DIR,
+        auto_offset_reset="earliest",
+        auto_recover_from_source_offset_out_of_range=AUTO_RECOVER,
+        state_recovery_offset_reset=OFFSET_RESET,
+    )
+    input_topic = app.topic(INPUT_TOPIC, value_deserializer="json", config=topic_config)
+    output_topic = app.topic(OUTPUT_TOPIC, value_serializer="json")
+
+    sdf = app.dataframe(input_topic)
+    sdf = sdf.apply(count_per_key, stateful=True, metadata=True)
+    sdf = sdf.to_topic(output_topic)
+
+    app.run()
+
 
 if __name__ == "__main__":
-    app.run()
+    main()
