@@ -1,2 +1,0 @@
-quixstreams @ git+https://github.com/quixio/quix-streams.git@feature/sc-73191/udpate-state-behavior-of-dedup-feature-to
-python-dotenv
