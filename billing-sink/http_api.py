@@ -82,7 +82,14 @@ def create_app(
             payload=payload,
             schema_version=config.schema_version,
         )
-        publish(record)  # POST -> Kafka durability; SDF mirrors to State + sinks.
+        try:
+            publish(record)  # POST -> Kafka durability; SDF mirrors to State + sinks.
+        except BufferError:
+            # librdkafka local produce queue is full -> controlled backpressure so
+            # callers retry, instead of an unhandled 500.
+            return JSONResponse(
+                status_code=503, content={"error": "ingest buffer full"}
+            )
         return JSONResponse(
             status_code=202,
             content={

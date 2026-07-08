@@ -52,7 +52,7 @@ anywhere.
 | `records.py` | Pure record build + validation: `build_event_record`, `enrich_for_sink`, `parse_duration_ms`, header/credit-type validators, `SINK_COLUMNS` (the 14-col schema), `now_ms`. |
 | `auth.py` | `Authorizer` wrapping `quixportal.auth.Auth` behind an `AuthDecision` enum (ALLOW/UNAUTHENTICATED/FORBIDDEN/UNAVAILABLE). Lazy Auth construction; any error → UNAVAILABLE. |
 | `state_buffer.py` | State-key layout + helpers (`add_pending`, `is_replay`, `confirm_sunk`, `read_pending_records`, `pending_count`) and the `PendingBuffer` (RAM cache + health snapshot). |
-| `lake_writer.py` | `LakehouseWriter` Protocol + `QuixTSDataLakeWriter` (drives `QuixTSDataLakeSink` synchronously) + `build_lakehouse_writer` factory. |
+| `lake_writer.py` | `LakehouseWriter` Protocol + `QuixLakeWriter` (drives `QuixLakeClient.insert` synchronously) + `build_lakehouse_writer` factory. |
 | `http_api.py` | FastAPI app: `POST /billing/...` (auth → validate → publish → 202) and open `GET /healthz`. |
 | `pipeline.py` | `FlushController` (stateful op `handle`, ingest, `_maybe_flush`, retry backoff), `make_publisher`, `start_flush_ticker`. |
 | `main.py` | Entrypoint: load config, build Application/topic/SDF, producer, authorizer, FastAPI app; start uvicorn + flush-tick threads; `app.run()` on main; flush producer on exit. |
@@ -67,7 +67,7 @@ anywhere.
 | `app.yaml`, `requirements.txt` | `BILLING_*` vars; `requests`. |
 
 `quix.yaml`: new `Billing Sink` deployment (state, `network.serviceName:
-billing-sink` + port 80, `blobStorage.bind: true`, all vars); `BILLING_*` added
+billing-sink` + port 80, all vars); `BILLING_*` added
 to `Recovery Filter`; `billing-events` added to `topics`.
 
 ## Data flow
@@ -92,32 +92,32 @@ billing-events topic ──consumed by──► [main thread: app.run(), one sta
       → on success: state.delete(record:{id}); state.set(_sunk:{id}, ttl=DEDUP_TTL);
         trim _pending_index; RAM.remove; _last_flush_ts=now
       ▼
-Lakehouse billing_events  (Hive parquet: environment_id/deployment_id/event_month)
+Lakehouse billing_events  (lake service /insert; hive: environment_id/deployment_id/event_month)
 ```
 
 ## LakehouseWriter backend shipped
 
-**`QuixTSDataLakeWriter`** wrapping `quixstreams.sinks.core.quix_ts_datalake_sink.QuixTSDataLakeSink`.
+**`QuixLakeWriter`** wrapping `quixlake-sdk`'s `QuixLakeClient.insert` (spec
+Amendment A2). All writes go through the Lakehouse **Query API `/insert`**
+endpoint; the lake service persists parquet and maintains the Iceberg catalog
+server-side. Our code never touches blob storage directly — direct blob writes
+bypass the service and can corrupt the catalog (the user's rule that drove A2).
 
-- The sink is a framework `BatchingSink`; we drive it *directly* — build a one-shot
-  `SinkBatch`, append rows, call `sink.write(batch)` synchronously (one-time
-  lazy `sink.setup()` on first write). It writes Hive-partitioned Parquet to blob
-  storage via quixportal (creds from `Quix__BlobStorage__Connection__Json`) and
-  registers files in the Iceberg REST catalog (`Quix__Lakehouse__Catalog__Url` +
-  AuthToken). Partition columns: `environment_id, deployment_id, event_month`.
-- **Why this and not the spec's manual-parquet fallback:** the sink *is* exactly
-  that fallback (parquet→blob + Iceberg REST), but maintained. Evidence it is
-  available on the deployment: importable locally with all deps
-  (`pandas`/`pyarrow`/`quixportal`); the pinned `sc-73191` quixstreams branch
-  contains `quixstreams/sinks/core/quix_ts_datalake_sink.py` (GitHub raw source)
-  and its `pyproject` defines the `quixdatalake` extra
-  (`pandas`,`pyarrow`,`quixportal`).
+- `write_batch(rows)` builds a pandas DataFrame with the fixed 14-column schema
+  (`records.SINK_COLUMNS`) and calls `client.insert(table_name=LAKE_TABLE,
+  data=frame, hive_columns=["environment_id","deployment_id","event_month"])`,
+  synchronous (`async_mode=False`). The client is built lazily from
+  `Quix__Lakehouse__Query__Url` + `__AuthToken` (both auto-inject on dev;
+  billing-sink fails fast at startup if either is missing).
+- **Failure handling:** `insert` raises on any non-200 (`raise_for_status`), which
+  propagates so the flush op keeps the batch pending and the existing
+  retry/backoff runs. A **409 partition mismatch** (raised as `ValueError`) is
+  structurally non-retryable: the writer logs it loudly and re-raises; the batch
+  stays pending and the backoff cap prevents a tight loop (an operator must fix
+  the partition structure — there is no direct-blob fallback).
 - **Swapping backends:** implement the `LakehouseWriter` Protocol
   (`write_batch(rows) -> None`, raise on failure) and return it from
   `build_lakehouse_writer`. Nothing in the flush path changes.
-- **Known extra column:** the sink adds a `__key` column (the Kafka message key =
-  `STATE_KEY`) to each row, so the table has the 14 spec columns + `__key`. This is
-  intrinsic to the sink and harmless.
 
 ## Restart recovery & idempotency
 
@@ -136,8 +136,8 @@ Lakehouse billing_events  (Hive parquet: environment_id/deployment_id/event_mont
   *after* the TTL expires would double-write (Iceberg is append-only).
 - **Flush failure:** `write_batch` raising leaves records in State + RAM; the
   controller sets an exponential backoff (`FLUSH_RETRY_BASE_MS` × 2^n, capped at
-  `FLUSH_RETRY_CAP_MS`) and retries on the next trigger. (The sink itself also
-  retries 3× internally before raising.)
+  `FLUSH_RETRY_CAP_MS`) and retries on the next trigger. A 409 partition mismatch
+  is logged loudly and re-raised (kept pending; the cap prevents a tight loop).
 
 ## Config surface
 
@@ -145,14 +145,14 @@ Spec §7.3 / §7.4 / A1 vars are implemented verbatim with the spec's names and
 defaults. **Additions beyond §7.3** (declared in `app.yaml`/`quix.yaml`, flagged
 here for transparency):
 
-- `LAKE_S3_PREFIX` (default `billing`) — required positional of `QuixTSDataLakeSink`
-  (`s3_prefix`); the table lives at `<prefix>/<LAKE_TABLE>/...` in blob storage.
 - `FLUSH_RETRY_BASE_MS` (1000) / `FLUSH_RETRY_CAP_MS` (60000) — parameterize the
   spec §5.4-mandated bounded backoff (kept out of magic numbers).
 
-Note: the topic variable is named `billing-events` (spec §7.3). If the hyphen ever
-breaks env injection, the code default (`"billing-events"`) equals the intended
-topic name, so behaviour is unchanged.
+Lakehouse writes need `Quix__Lakehouse__Query__Url` + `__AuthToken` (auto-inject on
+dev; local fallbacks `QUIXLAKE_URL` / `QUIX_LAKE_TOKEN`); startup fails fast if
+either is missing.
+
+Note: the topic variable is named `BILLING_TOPIC` (default `billing-events`).
 
 ## Integration with recovery-filter
 
@@ -168,15 +168,15 @@ shutdown (Phase-1 default).
 
 ## How to run locally (no cluster)
 
-Uses the repo-global Python (has quixstreams + QuixTSDataLakeSink + deps) or a
+Uses the repo-global Python (has quixstreams + quixlake-sdk + deps) or a
 venv with `billing-sink/requirements.txt`.
 
 - **Byte-compile:** `python -m py_compile billing-sink/*.py`.
 - **Logic + HTTP smoke (no broker/lake/portal):** `python .tmp/smoke_billing.py`
   (fake State, fake writer, stub Auth; 28 checks).
 - **Full local run against a broker:** set `BROKER_ADDRESS`/Quix SDK env, set
-  `AUTH_ENABLED=false` (skip portal), a real `HTTP_PORT`, and blob/catalog creds
-  (or point `CATALOG_URL` at a dev catalog) for actual Lakehouse writes; then
+  `AUTH_ENABLED=false` (skip portal), a real `HTTP_PORT`, and `QUIXLAKE_URL` /
+  `QUIX_LAKE_TOKEN` (the Query API) for actual Lakehouse writes; then
   `python billing-sink/main.py`. `curl -XPOST localhost:$PORT/billing/test/12 -H
   'X-Environment-Id: e' -H 'X-Deployment-Id: d'` → 202; `GET /healthz` → buffer
   stats.

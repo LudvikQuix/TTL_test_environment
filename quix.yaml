@@ -175,10 +175,6 @@ deployments:
         inputType: FreeText
         description: Lakehouse table name for billing rows.
         value: billing_events
-      - name: LAKE_S3_PREFIX
-        inputType: FreeText
-        description: Blob-storage path prefix under which the table directory is written (required positional of the data-lake sink).
-        value: billing
       - name: STATE_KEY
         inputType: FreeText
         description: Constant message key so all events share one State store. Empty falls back to Quix__Deployment__Id, else billing-sink.
@@ -215,8 +211,6 @@ deployments:
         inputType: FreeText
         description: Workspace permission required to bill (Create/Read/Update/Delete/Write/All).
         value: Write
-    blobStorage:
-      bind: true
 
 # This section describes the Topics of the data pipeline
 topics:

@@ -36,11 +36,6 @@ variables:
     description: Lakehouse table name for billing rows.
     defaultValue: billing_events
     required: false
-  - name: LAKE_S3_PREFIX
-    inputType: FreeText
-    description: Blob-storage path prefix under which the table directory is written (required positional of the data-lake sink; beyond spec 7.3).
-    defaultValue: billing
-    required: false
   - name: STATE_KEY
     inputType: FreeText
     description: Constant message key so all events share one State store. Empty falls back to Quix__Deployment__Id, else "billing-sink".

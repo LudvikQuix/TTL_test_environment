@@ -445,3 +445,36 @@ the default requires no configuration.
 
 **QA additions:** curl without header → 401; with garbage token → 403; with the
 env SDK token and with a PAT → 202.
+
+---
+## Amendment A2 — Lakehouse writes go via the lake service, not direct blob (2026-07-08, user directive)
+
+Supersedes §5.6's write mechanism. **No direct blob-storage writes from our
+code** — direct parquet uploads bypass the lake service and can corrupt the
+catalog. All writes go through the Lakehouse Query API's `/insert` endpoint via
+`quixlake-sdk` (`QuixLakeClient.insert`), which writes parquet and maintains the
+Iceberg catalog server-side.
+
+**Writer backend (replaces QuixTSDataLakeSink inside `LakehouseWriter`):**
+```python
+from quixlake import QuixLakeClient
+client = QuixLakeClient(
+    base_url=os.environ["Quix__Lakehouse__Query__Url"],      # auto-injected on dev
+    token=os.environ["Quix__Lakehouse__Query__AuthToken"],
+)
+client.insert(
+    table_name=LAKE_TABLE,                                    # billing_events
+    data=batch_dataframe,                                     # pandas DataFrame
+    hive_columns=["environment_id", "deployment_id", "event_month"],
+)
+```
+- Synchronous (`async_mode=False`); raises on non-200 → the existing flush
+  retry/backoff and confirmed-delete semantics are unchanged.
+- 409 = partition structure mismatch → non-retryable, log loudly.
+
+**Dependency changes:** REMOVE `s3fs`; drop the `[quixdatalake]` extra (plain
+quixstreams pin); ADD `quixlake-sdk==0.2.3` and `pandas` (explicit now that the
+extra no longer pulls it).
+
+**quix.yaml changes:** REMOVE `blobStorage.bind` (no blob access needed) and the
+`LAKE_S3_PREFIX` variable. The Query URL/token auto-inject on dev clusters.

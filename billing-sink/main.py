@@ -58,11 +58,22 @@ def main() -> None:
         f"state_key={config.state_key} consumer_group={config.consumer_group} "
         f"batch_size={config.batch_size} flush_interval_s={config.flush_interval_seconds} "
         f"dedup_ttl_s={config.dedup_ttl_seconds} lake_table={config.lake_table} "
-        f"lake_s3_prefix={config.lake_s3_prefix} schema_version={config.schema_version} "
+        f"query_url_set={bool(config.query_url)} schema_version={config.schema_version} "
         f"auth_enabled={config.auth_enabled} auth_permission={config.auth_required_permission} "
         f"http_port={config.http_port} logger={config.logger_level}",
         flush=True,
     )
+
+    # Fail fast: Lakehouse writes go through the Query API /insert, which needs
+    # both vars (auto-injected on dev). Missing => no writer can ever confirm.
+    if not config.query_url or not config.query_token:
+        print(
+            "[STARTUP] FATAL: Quix__Lakehouse__Query__Url / __AuthToken not set "
+            "(auto-inject on dev). quixlake-sdk writes require both; set them or "
+            "QUIXLAKE_URL / QUIX_LAKE_TOKEN locally. Exiting.",
+            flush=True,
+        )
+        raise SystemExit(1)
 
     buffer = PendingBuffer()
     writer = build_lakehouse_writer(config)

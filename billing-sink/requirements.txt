@@ -1,7 +1,8 @@
 --extra-index-url https://pkgs.dev.azure.com/quix-analytics/53f7fe95-59fe-4307-b479-2473b96de6d1/_packaging/public/pypi/simple/
-quixstreams[quixdatalake] @ git+https://github.com/quixio/quix-streams.git@feature/sc-73191/udpate-state-behavior-of-dedup-feature-to
+quixstreams @ git+https://github.com/quixio/quix-streams.git@feature/sc-73191/udpate-state-behavior-of-dedup-feature-to
 quixportal==2.0.1
-s3fs
-python-dotenv
-fastapi
-uvicorn
+quixlake-sdk==0.2.3
+pandas==2.3.3
+python-dotenv==1.2.2
+fastapi==0.135.3
+uvicorn==0.44.0

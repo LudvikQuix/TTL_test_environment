@@ -10,8 +10,9 @@ from __future__ import annotations
 import os
 from dataclasses import dataclass
 
-# Hive partition columns for the Lakehouse table (spec section 7.1), applied by
-# the QuixTSDataLakeSink and documented here so the layout has one source.
+# Hive partition columns for the Lakehouse table (spec section 7.1), passed as
+# hive_columns to QuixLakeClient.insert and documented here so the layout has
+# one source.
 PARTITION_COLUMNS = ["environment_id", "deployment_id", "event_month"]
 
 _TRUE = ("1", "true", "yes", "on")
@@ -60,13 +61,12 @@ class BillingConfig:
     logger_level: str
     dedup_ttl_seconds: int
     schema_version: int
-    # Lakehouse
+    # Lakehouse (writes go via the Query API /insert; URL+token auto-inject on dev)
     lake_table: str
-    lake_s3_prefix: str
     workspace_id: str
     deployment_id: str
-    catalog_url: str | None
-    catalog_token: str | None
+    query_url: str | None
+    query_token: str | None
     # Flush retry backoff (parameterizes the spec section 5.4 bounded-backoff)
     flush_retry_base_ms: int
     flush_retry_cap_ms: int
@@ -94,11 +94,10 @@ def load_config() -> BillingConfig:
         dedup_ttl_seconds=int(_env("DEDUP_TTL_SECONDS", "600")),
         schema_version=int(_env("SCHEMA_VERSION", "1")),
         lake_table=_env("LAKE_TABLE", "billing_events"),
-        lake_s3_prefix=_env("LAKE_S3_PREFIX", "billing"),
         workspace_id=_env("Quix__Workspace__Id"),
         deployment_id=_env("Quix__Deployment__Id"),
-        catalog_url=(_env("Quix__Lakehouse__Catalog__Url") or _env("CATALOG_URL")) or None,
-        catalog_token=(_env("Quix__Lakehouse__Catalog__AuthToken") or _env("CATALOG_TOKEN"))
+        query_url=(_env("Quix__Lakehouse__Query__Url") or _env("QUIXLAKE_URL")) or None,
+        query_token=(_env("Quix__Lakehouse__Query__AuthToken") or _env("QUIX_LAKE_TOKEN"))
         or None,
         flush_retry_base_ms=int(_env("FLUSH_RETRY_BASE_MS", "1000")),
         flush_retry_cap_ms=int(_env("FLUSH_RETRY_CAP_MS", "60000")),
