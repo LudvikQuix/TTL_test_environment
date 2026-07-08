@@ -72,33 +72,6 @@ deployments:
         inputType: FreeText
         description: State-scoped log level; DEBUG surfaces the backfill STARTED/progress/FINISHED + per-flush logs.
         value: DEBUG
-  - name: Dedup Filter (No TTL)
-    application: dedup-filter-no-ttl
-    version: latest
-    deploymentType: Service
-    resources:
-      limits:
-        cpu: 200
-        memory: 500
-    state:
-      enabled: true
-      size: 1
-    desiredStatus: Stopped
-    variables:
-      - name: input
-        inputType: InputTopic
-        description: Topic with raw events (shared input across all dedup filters)
-        required: true
-        value: raw-events
-      - name: output
-        inputType: OutputTopic
-        description: Topic with deduplicated events (no-TTL pipeline)
-        required: true
-        value: deduped-events-no-ttl
-      - name: VALUE_PADDING_BYTES
-        inputType: FreeText
-        description: Pad each stored value with this many bytes (matches the TTL filter for apples-to-apples comparison).
-        value: 1000
   - name: Recovery Generator
     application: recovery-generator
     version: latest
