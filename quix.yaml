@@ -142,7 +142,7 @@ deployments:
           targetPort: 80
     desiredStatus: Running
     variables:
-      - name: billing-events
+      - name: BILLING_TOPIC
         inputType: InputTopic
         description: Internal topic the HTTP handler produces billing events + flush ticks to, consumed by the single stateful SDF.
         required: true

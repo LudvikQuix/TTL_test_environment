@@ -86,7 +86,7 @@ def load_config() -> BillingConfig:
         http_port=int(_env("HTTP_PORT", "80")),
         batch_size=int(_env("BATCH_SIZE", "500")),
         flush_interval_seconds=int(_env("FLUSH_INTERVAL_SECONDS", "30")),
-        events_topic=_env("billing-events", "billing-events"),
+        events_topic=_env("BILLING_TOPIC", "billing-events"),
         consumer_group=_env("CONSUMER_GROUP", "billing-sink-v1"),
         state_key=_resolve_state_key(),
         state_dir=_env("STATE_DIR", "state"),
