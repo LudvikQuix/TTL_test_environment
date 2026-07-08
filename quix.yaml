@@ -258,7 +258,7 @@ deployments:
       enabled: true
       size: 2
       path: /app/state2
-    desiredStatus: Stopped
+    desiredStatus: Running
     variables:
       - name: input
         inputType: InputTopic
@@ -281,11 +281,11 @@ deployments:
       - name: CG_VERSION
         inputType: FreeText
         description: Consumer-group suffix (e.g. v1). Bump for a fresh clean store, no code change.
-        value: v10.0
+        value: v10.1
       - name: TTL_MODE
         inputType: FreeText
         description: 0 = legacy seeder (no ttl=, byte-identical to 3.23.6). 1 = TTL build (ttl= + legacy_records_ttl -> flip+backfill).
-        value: 1
+        value: 0
       - name: STATE_TTL_SECONDS
         inputType: FreeText
         description: Per-write ttl= for new dedup entries, seconds (used when TTL_MODE=1).
@@ -313,7 +313,7 @@ deployments:
       - name: ROCKSDB_WRITE_BUFFER_SIZE
         inputType: FreeText
         description: RocksDB write buffer size in bytes (memtable). Test-env tuning knob.
-        value: 4194304
+        value: 1048576
       - name: ROCKSDB_TARGET_FILE_SIZE_BASE
         inputType: FreeText
         description: RocksDB target SST file size in bytes. Test-env tuning knob.
