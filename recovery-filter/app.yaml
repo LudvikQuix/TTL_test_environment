@@ -51,6 +51,46 @@ variables:
     description: "Kafka consumer group id for this deployment. Change this to reset consumption/offsets independently across deployment updates."
     defaultValue: "recovery-filter-v1"
     required: false
+  - name: BILLING_ENABLED
+    inputType: FreeText
+    description: "true/false. When true, emit fire-and-forget billing events to the billing-sink. Never blocks or crashes filtering."
+    defaultValue: "true"
+    required: false
+  - name: BILLING_URL
+    inputType: FreeText
+    description: "Base URL of the billing-sink service (in-cluster serviceName)."
+    defaultValue: "http://billing-sink"
+    required: false
+  - name: BILLING_TOKEN
+    inputType: FreeText
+    description: "Bearer token for billing POSTs. Empty falls back to the injected Quix__Sdk__Token."
+    defaultValue: ""
+    required: false
+  - name: BILLING_ENVIRONMENT_ID
+    inputType: FreeText
+    description: "X-Environment-Id header on billing POSTs. Empty falls back to injected Quix__Workspace__Id."
+    defaultValue: ""
+    required: false
+  - name: BILLING_DEPLOYMENT_ID
+    inputType: FreeText
+    description: "X-Deployment-Id header on billing POSTs. Empty falls back to injected Quix__Deployment__Id."
+    defaultValue: ""
+    required: false
+  - name: BILLING_KEYS_PER_EVENT
+    inputType: FreeText
+    description: "Emit a keys-processed-<N> billing event every N processed messages."
+    defaultValue: "1000"
+    required: false
+  - name: BILLING_TIMEOUT_SECONDS
+    inputType: FreeText
+    description: "HTTP timeout (seconds) for each billing POST."
+    defaultValue: "2.0"
+    required: false
+  - name: BILLING_QUEUE_MAXSIZE
+    inputType: FreeText
+    description: "Max queued billing POSTs before new events are dropped (counter incremented)."
+    defaultValue: "1000"
+    required: false
 dockerfile: build/dockerfile
 runEntryPoint: main.py
 defaultFile: main.py

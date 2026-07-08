@@ -1,0 +1,91 @@
+name: Billing Sink
+language: python
+variables:
+  - name: billing-events
+    inputType: InputTopic
+    description: Internal topic the HTTP handler produces billing events + flush ticks to, consumed by the single stateful SDF.
+    defaultValue: billing-events
+    required: true
+  - name: BATCH_SIZE
+    inputType: FreeText
+    description: Number of buffered events that triggers a Lakehouse flush.
+    defaultValue: "500"
+    required: true
+  - name: HTTP_PORT
+    inputType: FreeText
+    description: Port uvicorn binds for the POST /billing and GET /healthz endpoints.
+    defaultValue: "80"
+    required: false
+  - name: FLUSH_INTERVAL_SECONDS
+    inputType: FreeText
+    description: Max seconds a non-empty buffer waits before a time-based flush; also the flush-tick cadence.
+    defaultValue: "30"
+    required: false
+  - name: DEDUP_TTL_SECONDS
+    inputType: FreeText
+    description: TTL of the per-event _sunk idempotency marker; must exceed the consumer commit window.
+    defaultValue: "600"
+    required: false
+  - name: SCHEMA_VERSION
+    inputType: FreeText
+    description: Constant written into each row's schema_version column.
+    defaultValue: "1"
+    required: false
+  - name: LAKE_TABLE
+    inputType: FreeText
+    description: Lakehouse table name for billing rows.
+    defaultValue: billing_events
+    required: false
+  - name: LAKE_S3_PREFIX
+    inputType: FreeText
+    description: Blob-storage path prefix under which the table directory is written (required positional of the data-lake sink; beyond spec 7.3).
+    defaultValue: billing
+    required: false
+  - name: STATE_KEY
+    inputType: FreeText
+    description: Constant message key so all events share one State store. Empty falls back to Quix__Deployment__Id, else "billing-sink".
+    defaultValue: ""
+    required: false
+  - name: CONSUMER_GROUP
+    inputType: FreeText
+    description: Kafka consumer group id; changelog topic name embeds it.
+    defaultValue: billing-sink-v1
+    required: false
+  - name: STATE_DIR
+    inputType: FreeText
+    description: Local directory for RocksDB state.
+    defaultValue: state
+    required: false
+  - name: LOGGER
+    inputType: FreeText
+    description: off/info/debug. off silences [BILLING-SINK] lines; debug also sets quixstreams logger to DEBUG.
+    defaultValue: info
+    required: false
+  - name: FLUSH_RETRY_BASE_MS
+    inputType: FreeText
+    description: Base delay for the flush retry backoff after a failed Lakehouse write (beyond spec 7.3; parameterizes the section 5.4 backoff).
+    defaultValue: "1000"
+    required: false
+  - name: FLUSH_RETRY_CAP_MS
+    inputType: FreeText
+    description: Cap for the flush retry backoff delay (beyond spec 7.3).
+    defaultValue: "60000"
+    required: false
+  - name: AUTH_ENABLED
+    inputType: FreeText
+    description: true = require Authorization Bearer token on POST /billing. false only for broker-less local dev (spec Amendment A1).
+    defaultValue: "true"
+    required: false
+  - name: AUTH_CACHE_SECONDS
+    inputType: FreeText
+    description: quixportal Auth validation cache validity, passed as Auth(cache_validity=...).
+    defaultValue: "300"
+    required: false
+  - name: AUTH_REQUIRED_PERMISSION
+    inputType: FreeText
+    description: Workspace permission required to bill (Create/Read/Update/Delete/Write/All).
+    defaultValue: Write
+    required: false
+dockerfile: build/dockerfile
+runEntryPoint: main.py
+defaultFile: main.py

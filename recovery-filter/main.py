@@ -6,6 +6,8 @@ from datetime import timedelta
 
 from dotenv import load_dotenv
 
+from billing_client import build_billing_client
+
 load_dotenv()
 
 INPUT_TOPIC = os.environ.get("input", "recovery-input")
@@ -17,6 +19,7 @@ STATE_SIZE_LOG_INTERVAL = int(os.environ.get("STATE_SIZE_LOG_INTERVAL", "10"))
 TTL_MODE = os.environ.get("TTL_MODE", "off").strip().lower() in ("1", "true", "yes", "on")
 STATE_TTL_SECONDS = int(os.environ.get("STATE_TTL_SECONDS", "30"))
 CONSUMER_GROUP = os.environ.get("CONSUMER_GROUP", "recovery-filter-v1")
+BILLING_KEYS_PER_EVENT = int(os.environ.get("BILLING_KEYS_PER_EVENT", "1000"))
 
 
 def resolve_logger_level(raw: str) -> str:
@@ -53,6 +56,13 @@ _skip_count = [0]
 # _rocksdb_est_keys()/_rocksdb_exact_keys() from the periodic status logger
 # thread.
 app = None
+
+# Billing integration (spec section 5.7). `billing` is set by main() and read by
+# dedup_filter; the counters/timestamps drive the keys-processed event cadence.
+billing = None
+_keys_processed = [0]
+_last_keys_fire_ms = [0]
+_start_ms = [0]
 
 
 def _dir_size_bytes(path: str) -> int:
@@ -135,7 +145,35 @@ def should_process(new_status) -> bool:
     return new_status is not None
 
 
+def _maybe_emit_keys_event():
+    """Count this message and, every BILLING_KEYS_PER_EVENT-th, POST a
+    keys-processed billing event whose duration is the wall-clock ms since the
+    previous fire. Fire-and-forget; never raises into the filter (spec 5.7)."""
+    _keys_processed[0] += 1
+    if billing is None or _keys_processed[0] % BILLING_KEYS_PER_EVENT != 0:
+        return
+    now = int(time.time() * 1000)
+    duration = now - _last_keys_fire_ms[0] if _last_keys_fire_ms[0] else 0
+    _last_keys_fire_ms[0] = now
+    try:
+        billing.emit(
+            f"keys-processed-{BILLING_KEYS_PER_EVENT}",
+            duration,
+            {
+                "operation": "dedup-filter",
+                "keys": BILLING_KEYS_PER_EVENT,
+                "pass": _pass_count[0],
+                "block": _block_count[0],
+                "skip": _skip_count[0],
+            },
+        )
+    except Exception as exc:  # emit() is already non-raising; extra insurance
+        if LOGGER_LEVEL == "debug":
+            print(f"[BILLING-CLIENT] keys emit skipped: {exc}", flush=True)
+
+
 def dedup_filter(value, key, timestamp, headers, state):
+    _maybe_emit_keys_event()
     new_status = resolve_new_status(value)
     if not should_process(new_status):
         _skip_count[0] += 1
@@ -163,7 +201,11 @@ def dedup_filter(value, key, timestamp, headers, state):
 
 
 def main():
-    global app
+    global app, billing
+
+    billing = build_billing_client()
+    _start_ms[0] = int(time.time() * 1000)
+    _last_keys_fire_ms[0] = _start_ms[0]
 
     logging.getLogger("quixstreams").setLevel(
         logging.DEBUG if LOGGER_LEVEL == "debug" else logging.INFO
@@ -209,6 +251,17 @@ def main():
     sdf = sdf.to_topic(output_topic)
 
     app.run()
+
+    # Graceful shutdown (app.run() returns on SIGTERM/SIGINT): emit one
+    # backfill-action event whose duration is the wall-clock ms from service
+    # start to shutdown (spec 5.7 Phase-1 default). Blocking best-effort so it
+    # lands before the process exits and the daemon worker dies with it.
+    duration_ms = int(time.time() * 1000) - _start_ms[0]
+    billing.emit_now(
+        "backfill-action",
+        duration_ms,
+        {"operation": "backfill", "messages": _keys_processed[0]},
+    )
 
 
 if __name__ == "__main__":
