@@ -99,24 +99,6 @@ deployments:
         inputType: FreeText
         description: Pad each stored value with this many bytes (matches the TTL filter for apples-to-apples comparison).
         value: 1000
-  - name: TTL Verify Generator
-    application: ttl-verify-generator
-    version: latest
-    deploymentType: Job
-    resources:
-      limits:
-        cpu: 200
-        memory: 200
-    variables:
-      - name: output
-        inputType: OutputTopic
-        description: Topic both ttl-verify dedupers read from
-        required: true
-        value: ttl-verify-input
-      - name: TTL_WAIT_SECONDS
-        inputType: FreeText
-        description: Pause between same-order events that must EXCEED the feature deduper's STATE_TTL_SECONDS so the cached entry expires.
-        value: 7
   - name: Recovery Generator
     application: recovery-generator
     version: latest
