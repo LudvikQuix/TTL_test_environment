@@ -12,7 +12,7 @@ sinks them to the Quix Lakehouse `billing_events` table in configurable batches.
 Each event flows **POST → Kafka (billing-events topic) → QuixStreams State
 mirror → Lakehouse**, and is deleted from State only after a *confirmed*
 Lakehouse write. `recovery-filter` is adapted to emit two kinds of billing
-events (`keys-processed-<N>` throughput ticks and one `backfill-action` on
+events (`messages-processed-<N>` throughput ticks and one `backfill-action` on
 shutdown) as fire-and-forget POSTs that never block or crash filtering. The
 stored value is raw `duration_ms` — there is no credit/money conversion
 anywhere.
@@ -63,7 +63,7 @@ anywhere.
 | File | Change |
 |---|---|
 | `billing_client.py` (new) | `BillingClient` (bounded `queue.Queue` + one daemon worker POSTing to billing-sink). `emit` (non-blocking, drop-on-full), `emit_now` (blocking, shutdown only). `build_billing_client()` reads `BILLING_*`. |
-| `main.py` | `_maybe_emit_keys_event()` called at top of `dedup_filter` (counts every message; fires `keys-processed-<N>` every `BILLING_KEYS_PER_EVENT`). `main()` builds the client and, after `app.run()` returns, emits one `backfill-action`. |
+| `main.py` | `_maybe_emit_messages_event()` called at top of `dedup_filter` (counts every message; fires `messages-processed-<N>` every `BILLING_MESSAGES_PER_EVENT`). `main()` builds the client and, after `app.run()` returns, emits one `backfill-action`. |
 | `app.yaml`, `requirements.txt` | `BILLING_*` vars; `requests`. |
 
 `quix.yaml`: new `Billing Sink` deployment (state, `network.serviceName:
@@ -162,7 +162,7 @@ recovery-filter POSTs to `http://billing-sink` (in-cluster DNS via
 Quix__Sdk__Token>` (the SDK token is auto-injected, so the default needs no
 config and passes billing-sink's `Workspace/Write` check). The client is
 fire-and-forget: a full queue drops (counter), a POST error logs + drops, and it
-never raises into the SDF. `keys-processed-<N>` carries `duration_ms` = wall-clock
+never raises into the SDF. `messages-processed-<N>` carries `duration_ms` = wall-clock
 ms between fires; `backfill-action` carries `duration_ms` = service start →
 shutdown (Phase-1 default).
 

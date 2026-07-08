@@ -28,7 +28,7 @@ The measured value is **raw duration in milliseconds** (`duration_ms`). There is
   timeout also flushes small trickles (addition beyond the ticket — see §8).
 - Lakehouse rows carry the confirmed schema (§7) partitioned by
   `environment_id → deployment_id → event_month`.
-- recovery-filter emits `backfill-action` and `keys-processed-<N>` billing
+- recovery-filter emits `backfill-action` and `messages-processed-<N>` billing
   events without ever blocking or crashing its main processing.
 - All thresholds are env-var parameters; no hard-coded magic numbers.
 
@@ -45,8 +45,8 @@ The measured value is **raw duration in milliseconds** (`duration_ms`). There is
 1. **QuixLab-style caller:** `POST /billing/quixlab-cell-exec/12345` with the two
    headers and a JSON body → `202 {event_id, received_at, status:"buffered"}`.
    The row later appears in the Lakehouse `billing_events` table.
-2. **recovery-filter throughput:** every `N` keys processed, the filter POSTs
-   `keys-processed-<N>` with `duration_ms` = wall-clock ms elapsed since the
+2. **recovery-filter throughput:** every `N` messages processed, the filter POSTs
+   `messages-processed-<N>` with `duration_ms` = wall-clock ms elapsed since the
    previous fire.
 3. **recovery-filter backfill:** the filter POSTs one `backfill-action` event
    with `duration_ms` = wall-clock ms of the backfill run.
@@ -189,11 +189,11 @@ Inside the stateful op, when a flush is due:
 - Headers on every POST: `X-Environment-Id: BILLING_ENVIRONMENT_ID` (default
   from injected `Quix__Workspace__Id`), `X-Deployment-Id: BILLING_DEPLOYMENT_ID`
   (default from injected `Quix__Deployment__Id`), `Content-Type: application/json`.
-- **Event (b) `keys-processed-<N>`:** maintain a counter incremented per
-  processed message inside `dedup_filter`. Every `BILLING_KEYS_PER_EVENT`-th
-  message, enqueue a POST `credit_type = f"keys-processed-{BILLING_KEYS_PER_EVENT}"`,
+- **Event (b) `messages-processed-<N>`:** maintain a counter incremented per
+  processed message inside `dedup_filter`. Every `BILLING_MESSAGES_PER_EVENT`-th
+  message, enqueue a POST `credit_type = f"messages-processed-{BILLING_MESSAGES_PER_EVENT}"`,
   `time-in-ms` = wall-clock ms since the previous fire, body
-  `{"operation":"dedup-filter","keys":N,"pass":..,"block":..,"skip":..}`.
+  `{"operation":"dedup-filter","messages":N,"pass":..,"block":..,"skip":..}`.
 - **Event (a) `backfill-action`:** time the backfill run and enqueue one POST
   `credit_type = "backfill-action"`, `time-in-ms` = wall-clock ms of the run,
   body `{"operation":"backfill","messages":..}`. The exact boundary of "the
@@ -312,7 +312,7 @@ last_flush_ts, batches_sunk, dropped_replays}`.
 | `BILLING_URL` | FreeText | `http://billing-sink` | no |
 | `BILLING_ENVIRONMENT_ID` | FreeText | `""` (→ `Quix__Workspace__Id`) | no |
 | `BILLING_DEPLOYMENT_ID` | FreeText | `""` (→ `Quix__Deployment__Id`) | no |
-| `BILLING_KEYS_PER_EVENT` | int | `1000` | no |
+| `BILLING_MESSAGES_PER_EVENT` | int | `1000` | no |
 | `BILLING_TIMEOUT_SECONDS` | float | `2.0` | no |
 | `BILLING_QUEUE_MAXSIZE` | int | `1000` | no |
 

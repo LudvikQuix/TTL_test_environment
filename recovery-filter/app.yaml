@@ -76,9 +76,9 @@ variables:
     description: "X-Deployment-Id header on billing POSTs. Empty falls back to injected Quix__Deployment__Id."
     defaultValue: ""
     required: false
-  - name: BILLING_KEYS_PER_EVENT
+  - name: BILLING_MESSAGES_PER_EVENT
     inputType: FreeText
-    description: "Emit a keys-processed-<N> billing event every N processed messages."
+    description: "Emit a messages-processed-<N> billing event every N processed messages."
     defaultValue: "1000"
     required: false
   - name: BILLING_TIMEOUT_SECONDS

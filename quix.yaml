@@ -9,12 +9,11 @@ deployments:
   - name: Recovery Generator
     application: recovery-generator
     version: latest
-    deploymentType: Service
+    deploymentType: Job
     resources:
       limits:
         cpu: 200
         memory: 200
-    desiredStatus: Stopped
     variables:
       - name: output
         inputType: OutputTopic
@@ -37,6 +36,10 @@ deployments:
         inputType: FreeText
         description: Probability (0.0-1.0) that a key's ON/OFF status flips on a given occurrence of that key; otherwise it holds its previous status.
         value: 0.05
+      - name: MESSAGE_COUNT
+        inputType: FreeText
+        description: Number of messages to emit before flushing and exiting (Job). 0 = run forever (legacy Service behavior).
+        value: 10000
   - name: Recovery Filter
     application: recovery-filter
     version: latest
@@ -112,9 +115,9 @@ deployments:
         inputType: FreeText
         description: X-Deployment-Id header on billing POSTs. Empty falls back to injected Quix__Deployment__Id.
         value: ''
-      - name: BILLING_KEYS_PER_EVENT
+      - name: BILLING_MESSAGES_PER_EVENT
         inputType: FreeText
-        description: Emit a keys-processed-<N> billing event every N processed messages.
+        description: Emit a messages-processed-<N> billing event every N processed messages.
         value: 1000
       - name: BILLING_TIMEOUT_SECONDS
         inputType: FreeText

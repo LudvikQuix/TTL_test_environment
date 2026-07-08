@@ -26,6 +26,11 @@ variables:
     description: "Probability (0.0-1.0) that a key's ON/OFF status flips on a given occurrence of that key; otherwise it holds its previous status."
     defaultValue: "0.05"
     required: false
+  - name: MESSAGE_COUNT
+    inputType: FreeText
+    description: "Number of messages to emit before flushing and exiting (Job). 0 = run forever (legacy Service behavior)."
+    defaultValue: "10000"
+    required: false
 dockerfile: build/dockerfile
 runEntryPoint: main.py
 defaultFile: main.py

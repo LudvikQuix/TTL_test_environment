@@ -11,6 +11,7 @@ RATE_PER_SECOND = float(os.environ.get("RATE_PER_SECOND", "100"))
 PADDING_BYTES = int(os.environ.get("PADDING_BYTES", "200"))
 KEY_COUNT = int(os.environ.get("KEY_COUNT", "1000"))
 FLIP_PROBABILITY = float(os.environ.get("FLIP_PROBABILITY", "0.05"))
+MESSAGE_COUNT = int(os.environ.get("MESSAGE_COUNT", "10000"))
 
 _PAD = "x" * PADDING_BYTES
 _SLEEP = 1 / RATE_PER_SECOND
@@ -54,17 +55,22 @@ def main():
     app = Application()
     output_topic = app.topic(OUTPUT_TOPIC, value_serializer="json", config=topic_config)
 
+    run_forever = MESSAGE_COUNT == 0
+    target = "forever" if run_forever else f"{MESSAGE_COUNT} messages"
     print(
-        f"[GEN] Producing forever to '{OUTPUT_TOPIC}' "
+        f"[GEN] Producing {target} to '{OUTPUT_TOPIC}' "
         f"(rate={RATE_PER_SECOND}/s, key_count={KEY_COUNT}, pad={PADDING_BYTES}B, "
         f"flip_probability={FLIP_PROBABILITY})",
         flush=True,
     )
     seq = 0
-    last_log = time.monotonic()
+    start = time.monotonic()
+    last_log = start
     key_status: dict = {}
     with app.get_producer() as producer:
-        while True:
+        # MESSAGE_COUNT == 0 keeps the old forever-Service behavior; otherwise
+        # emit exactly MESSAGE_COUNT then fall through to flush + summary + exit.
+        while run_forever or seq < MESSAGE_COUNT:
             key = f"key-{seq % KEY_COUNT}"
             flip = should_flip(random.random(), FLIP_PROBABILITY)
             status = next_status(key_status.get(key), flip)
@@ -78,6 +84,15 @@ def main():
                 print(f"[GEN] produced={seq}", flush=True)
                 last_log = now
             time.sleep(_SLEEP)
+        # Bounded run only (forever never reaches here): confirm delivery, then
+        # log the final summary and return so the Job exits 0.
+        producer.flush()
+        elapsed = time.monotonic() - start
+        rate = seq / elapsed if elapsed > 0 else 0.0
+        print(
+            f"[GEN] done emitted={seq} elapsed={elapsed:.2f}s rate={rate:.1f}/s",
+            flush=True,
+        )
 
 
 if __name__ == "__main__":
