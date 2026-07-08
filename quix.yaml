@@ -277,11 +277,11 @@ deployments:
       - name: CG_VERSION
         inputType: FreeText
         description: Consumer-group suffix (e.g. v1). Bump for a fresh clean store, no code change.
-        value: v9.3
+        value: v10.0
       - name: TTL_MODE
         inputType: FreeText
         description: 0 = legacy seeder (no ttl=, byte-identical to 3.23.6). 1 = TTL build (ttl= + legacy_records_ttl -> flip+backfill).
-        value: 1
+        value: 0
       - name: STATE_TTL_SECONDS
         inputType: FreeText
         description: Per-write ttl= for new dedup entries, seconds (used when TTL_MODE=1).
@@ -289,7 +289,7 @@ deployments:
       - name: LEGACY_RECORDS_TTL_SECONDS
         inputType: FreeText
         description: One-time backfill TTL (seconds) for pre-existing legacy records on upgrade (used when TTL_MODE=1).
-        value: 0
+        value: 3600
       - name: LOGGER
         inputType: FreeText
         description: on/off. off disables the periodic status logger (skips its per-interval rocksdb key scan). Set off in production.
