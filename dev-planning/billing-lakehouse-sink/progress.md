@@ -21,3 +21,22 @@ interruption resumes cheaply.
 - 2026-07-08 architect hotfix 2: billing-sink dockerfile python:3.11-slim -> 3.12-slim; cloud build failed because quixportal 2.0.x requires Python >=3.12 (local dev machine is 3.12, which is why smoke passed).
 - 2026-07-08 architect hotfix 3: added s3fs to billing-sink requirements - quixportal S3Provider needs it for the blob storage gateway; first cloud flush failed with 'Install s3fs to access S3'.
 - 2026-07-08 architect: re-added blobStorage.bind to Billing Sink - on dev the Quix__Lakehouse__Query__* vars inject ONLY with the bind (removal in CR-2 caused query_url_set=False crash-loop). Code still writes exclusively via /insert; skill quix-lakehouse corrected.
+
+## Session summary 2026-07-08 (for continuation)
+
+**Built & deployed on `billing-branch`, env `quixdev-ludviktestenvironment-billingservice`:**
+- `billing-sink/` service: POST /billing/{credit-type}/{time-in-ms} (Bearer auth via quixportal.auth.Auth - SDK token or PAT, 401/403/503, healthz open) -> billing-events topic -> single stateful SDF (State mirror, event_id dedup) -> batched Lakehouse writes via quixlake-sdk QuixLakeClient.insert() (Query API /insert; NO direct blob/s3fs - user hard rule, catalog safety). BATCH_SIZE=500 / FLUSH_INTERVAL_SECONDS=30. hive partitioning environment_id/deployment_id/event_month, table billing_events.
+- `recovery-filter`: fire-and-forget billing client - messages-processed-1000 events (per 1000 msgs, duration = ms since previous fire) + backfill-action on graceful stop. Auth via injected Quix__Sdk__Token.
+- `recovery-generator`: converted to Job with MESSAGE_COUNT (default 10000; 0 = forever).
+
+**Commits (chronological):** 7aba979 feature, 7160249 BILLING_TOPIC rename (no hyphens in var names), 288c032 python:3.12-slim (quixportal needs >=3.12), 777517a Job + message-naming, 1891a70 s3fs (later removed), fc7f8c3 lake-service writer (drops s3fs/blob code), 82b991c restore blobStorage.bind (carries the Quix__Lakehouse__Query__* injection on dev).
+
+**Verified end-to-end 16:24-16:26 UTC:** generator Job 10k msgs Completed -> filter POSTs 202 (durations ~10.1s/block) -> sink "flush ok" batches via /insert. Billing Sink + Recovery Filter left Running; generator Completed.
+
+**Independent review (quix-reviewer) passed:** QS-native exclusivity, deps, security, State usage; its findings (startup crash ref, quix.yaml drift, unpinned deps, BufferError->503) all fixed. Smoke suite .tmp/smoke_billing.py: 34/34.
+
+**Open / next:**
+- backfill-action event not yet observed (fires on filter graceful stop).
+- Eyeball billing_events partitions in Lakehouse UI.
+- Injection quirk worth raising with platform team: Quix__Lakehouse__Query__* only inject with blobStorage.bind: true.
+- User manual for the POST API: billing-sink/README.md (in progress).

@@ -300,7 +300,7 @@ last_flush_ts, batches_sunk, dropped_replays}`.
 | `DEDUP_TTL_SECONDS` | int | `600` | no |
 | `STATE_KEY` | FreeText | `""` (→ `Quix__Deployment__Id`, else `billing-sink`) | no |
 | `CONSUMER_GROUP` | FreeText | `billing-sink-v1` | no |
-| `billing-events` (topic) | Topic | `billing-events` | yes |
+| `BILLING_TOPIC` (topic var; hyphens invalid in var names) | Topic | `billing-events` | yes |
 | `LOGGER` | off/info/debug | `info` | no |
 | `STATE_DIR` | (platform-managed) | `state` | — |
 | `blobStorage.bind` | deployment flag | `true` | yes |
