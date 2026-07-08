@@ -211,6 +211,8 @@ deployments:
         inputType: FreeText
         description: Workspace permission required to bill (Create/Read/Update/Delete/Write/All).
         value: Write
+    blobStorage:
+      bind: true
 
 # This section describes the Topics of the data pipeline
 topics:

@@ -20,3 +20,4 @@ interruption resumes cheaply.
 - 2026-07-08 architect hotfix: renamed deployment variable 'billing-events' -> 'BILLING_TOPIC' (quix.yaml, app.yaml, config.py) - hyphens are invalid in Quix env-var names, deployment creation failed; topic name unchanged.
 - 2026-07-08 architect hotfix 2: billing-sink dockerfile python:3.11-slim -> 3.12-slim; cloud build failed because quixportal 2.0.x requires Python >=3.12 (local dev machine is 3.12, which is why smoke passed).
 - 2026-07-08 architect hotfix 3: added s3fs to billing-sink requirements - quixportal S3Provider needs it for the blob storage gateway; first cloud flush failed with 'Install s3fs to access S3'.
+- 2026-07-08 architect: re-added blobStorage.bind to Billing Sink - on dev the Quix__Lakehouse__Query__* vars inject ONLY with the bind (removal in CR-2 caused query_url_set=False crash-loop). Code still writes exclusively via /insert; skill quix-lakehouse corrected.
