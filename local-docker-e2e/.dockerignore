@@ -1,0 +1,9 @@
+# The library is bind-mounted at runtime, never copied into the image.
+# Keep the build context tiny: only app/, seeder/, inspect/, entrypoint.sh
+# are COPYed by the Dockerfile.
+runner/
+config/
+README.md
+**/__pycache__/
+**/*.pyc
+.tmp/
