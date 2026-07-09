@@ -51,7 +51,7 @@ deployments:
     state:
       enabled: true
       size: 1
-    desiredStatus: Stopped
+    desiredStatus: Running
     variables:
       - name: input
         inputType: InputTopic
@@ -205,7 +205,7 @@ deployments:
       - name: AUTH_ENABLED
         inputType: FreeText
         description: true = require Authorization Bearer token on POST /billing. false only for broker-less local dev (spec Amendment A1).
-        value: true
+        value: false
       - name: AUTH_CACHE_SECONDS
         inputType: FreeText
         description: quixportal Auth validation cache validity, passed as Auth(cache_validity=...).
