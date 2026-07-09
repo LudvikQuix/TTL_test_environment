@@ -158,7 +158,7 @@ No auth required. Returns:
 | `HTTP_PORT` | `80` | Port uvicorn listens on. |
 | `BATCH_SIZE` | `500` | Flush after this many buffered events. |
 | `FLUSH_INTERVAL_SECONDS` | `30` | Flush after this many seconds even if `BATCH_SIZE` is not reached. |
-| `BILLING_TOPIC` | `billing-events` | Internal Kafka topic name. |
+| `BILLING_TOPIC` | `billing-events` | Name of the internal self-loop Kafka topic (durability hop between the HTTP handler and the SDF). Never produce to it from outside — the only ingress is `POST /billing/...`. |
 | `LAKE_TABLE` | `billing_events` | Lakehouse target table name. |
 | `SCHEMA_VERSION` | `1` | Stamped on every row; increment when the schema changes. |
 | `DEDUP_TTL_SECONDS` | `600` | How long the sink remembers a sunk `event_id` to guard against replay double-writes. |
