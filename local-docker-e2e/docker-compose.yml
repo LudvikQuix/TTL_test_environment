@@ -1,0 +1,64 @@
+# Local, fully-offline topology for the TTL-migration E2E harness.
+#
+#   kafka  - long-lived single-node KRaft broker (outlives many app process
+#            lifetimes within a scenario). Env block copied from the unit
+#            suite's known-good config (quix-streams tests/containerhelper.py
+#            :27-54) with harness deltas: fixed hostname `kafka`, single
+#            partition + auto-create for determinism, unlimited retention so
+#            changelogs are never truncated mid-recovery.
+#   app    - shared image for app/seeder/inspector. NOT started by compose
+#            (`profiles: [manual]`); the runner drives it via `docker run` for
+#            precise start/kill/restart control. This entry only lets
+#            `docker compose build app` build the image.
+#
+# The state is a runner-managed named volume (`ttl_e2e_state`), not declared
+# here, so the runner can `docker volume rm/create` it for clean/cold-wipe.
+name: ttl-e2e
+
+services:
+  kafka:
+    image: confluentinc/cp-kafka:7.6.1
+    hostname: kafka
+    container_name: ttl_e2e_kafka
+    ports:
+      - "29092:29092"   # host access for debugging; in-container clients use kafka:9092
+    environment:
+      KAFKA_NODE_ID: "0"
+      KAFKA_PROCESS_ROLES: "controller,broker"
+      KAFKA_LISTENERS: "PLAINTEXT://:9092,CONTROLLER://:9093,EXTERNAL://:29092"
+      KAFKA_ADVERTISED_LISTENERS: "PLAINTEXT://kafka:9092,EXTERNAL://127.0.0.1:29092"
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: "CONTROLLER:PLAINTEXT,EXTERNAL:PLAINTEXT,PLAINTEXT:PLAINTEXT"
+      KAFKA_CONTROLLER_QUORUM_VOTERS: "0@kafka:9093"
+      KAFKA_CONTROLLER_LISTENER_NAMES: "CONTROLLER"
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: "1"
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: "10"
+      CLUSTER_ID: "KHqoS8LqRI-Yin1_P0aoiA=="
+      KAFKA_TRANSACTION_STATE_LOG_NUM_PARTITIONS: "1"
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: "1"
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: "1"
+      # Unlimited retention: changelogs must never be truncated mid-recovery
+      # (cf. MEMORY "Quix dev changelog 50MiB retention cap").
+      KAFKA_LOG_RETENTION_MS: "-1"
+      # Determinism (spec R-1): every auto-created topic is single-partition.
+      KAFKA_NUM_PARTITIONS: "1"
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+    healthcheck:
+      test: ["CMD", "kafka-broker-api-versions", "--bootstrap-server", "localhost:9092"]
+      interval: 5s
+      timeout: 10s
+      retries: 12
+      start_period: 10s
+
+  app:
+    image: ttl-e2e-app:latest
+    build:
+      context: .
+      dockerfile: Dockerfile
+    profiles: ["manual"]   # never started by `compose up`; runner uses `docker run`
+    depends_on:
+      kafka:
+        condition: service_healthy
+
+networks:
+  default:
+    name: ttl_e2e_net
