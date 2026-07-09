@@ -149,8 +149,8 @@ deployments:
           targetPort: 80
     variables:
       - name: BILLING_TOPIC
-        inputType: InputTopic
-        description: Internal topic the HTTP handler produces billing events + flush ticks to, consumed by the single stateful SDF.
+        inputType: FreeText
+        description: Name of the internal self-loop topic (HTTP handler produces billing events + flush ticks, the single stateful SDF consumes). Not an ingress - external callers use POST /billing only.
         required: true
         value: billing-events
       - name: BATCH_SIZE
