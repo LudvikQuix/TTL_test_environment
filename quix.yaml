@@ -135,15 +135,18 @@ deployments:
       limits:
         cpu: 500
         memory: 1000
+    publicAccess:
+      enabled: true
+      urlPrefix: billingsink-6de456
     state:
       enabled: true
       size: 1
+    desiredStatus: Running
     network:
       serviceName: billing-sink
       ports:
         - port: 80
           targetPort: 80
-    desiredStatus: Running
     variables:
       - name: BILLING_TOPIC
         inputType: InputTopic
@@ -177,7 +180,7 @@ deployments:
         value: billing_events
       - name: STATE_KEY
         inputType: FreeText
-        description: Constant message key so all events share one State store. Empty falls back to Quix__Deployment__Id, else billing-sink.
+        description: Constant message key so all events share one State store. Empty falls back to Quix__Deployment__Id, else "billing-sink".
         value: ''
       - name: CONSUMER_GROUP
         inputType: FreeText
@@ -193,15 +196,15 @@ deployments:
         value: info
       - name: FLUSH_RETRY_BASE_MS
         inputType: FreeText
-        description: Base delay for the flush retry backoff after a failed Lakehouse write.
+        description: Base delay for the flush retry backoff after a failed Lakehouse write (beyond spec 7.3; parameterizes the section 5.4 backoff).
         value: 1000
       - name: FLUSH_RETRY_CAP_MS
         inputType: FreeText
-        description: Cap for the flush retry backoff delay.
+        description: Cap for the flush retry backoff delay (beyond spec 7.3).
         value: 60000
       - name: AUTH_ENABLED
         inputType: FreeText
-        description: true = require Authorization Bearer token on POST /billing. false only for broker-less local dev.
+        description: true = require Authorization Bearer token on POST /billing. false only for broker-less local dev (spec Amendment A1).
         value: true
       - name: AUTH_CACHE_SECONDS
         inputType: FreeText
