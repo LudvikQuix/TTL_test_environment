@@ -357,6 +357,7 @@ deployments:
       limits:
         cpu: 500
         memory: 2000
+      replicas: 2
     state:
       enabled: true
       size: 2
