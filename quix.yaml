@@ -14,7 +14,7 @@ deployments:
       limits:
         cpu: 200
         memory: 200
-    desiredStatus: Running
+    desiredStatus: Stopped
     variables:
       - name: output
         inputType: OutputTopic
@@ -201,7 +201,7 @@ deployments:
     state:
       enabled: true
       size: 1
-    desiredStatus: Running
+    desiredStatus: Stopped
     variables:
       - name: input
         inputType: InputTopic
@@ -322,15 +322,15 @@ deployments:
         inputType: FreeText
         description: Max RocksDB write buffers (memtables) per store partition.
         value: 2
-  # ----- RocksDB rebalance livelock test rig (dev-planning/rebalance-livelock-test) -----
   - name: Rebalance Generator
     application: duplicate-key-generator
     version: latest
     deploymentType: Service
     resources:
-      cpu: 200
-      memory: 200
-    desiredStatus: Stopped
+      limits:
+        cpu: 200
+        memory: 200
+    desiredStatus: Running
     variables:
       - name: output
         inputType: OutputTopic
@@ -353,16 +353,10 @@ deployments:
     application: rebalance-filter-feature
     version: latest
     deploymentType: Service
-    # Q3: canonical FLAT resources per the Quix pipeline-descriptor reference
-    # (replicas is a flat sibling of cpu/memory). If this workspace's sync
-    # rejects the flat form, fall back to the repo's nested
-    # `resources: { limits: { cpu, memory } }` and then set replicas=2 in the
-    # Portal UI (the nested form does not carry replicas). VERIFY the deployment
-    # shows replicas=2 after sync -- the whole test depends on the shared-volume
-    # 2-replica topology.
     resources:
-      cpu: 500
-      memory: 2000
+      limits:
+        cpu: 500
+        memory: 2000
       replicas: 2
     state:
       enabled: true
@@ -414,10 +408,10 @@ deployments:
     application: rebalance-filter-stable
     version: latest
     deploymentType: Service
-    # Q3: see the Feature block above. VERIFY replicas=2 after sync.
     resources:
-      cpu: 500
-      memory: 2000
+      limits:
+        cpu: 500
+        memory: 2000
       replicas: 2
     state:
       enabled: true
@@ -476,7 +470,6 @@ topics:
   - name: ttl-verify-stable-out
   - name: recovery-output
   - name: recovery-input
-  # ----- RocksDB rebalance livelock test rig -----
   - name: rebalance-raw-events
     configuration:
       partitions: 8
