@@ -1,3 +1,4 @@
+import inspect
 import os
 import threading
 import time
@@ -51,18 +52,27 @@ STATE_SIZE_LOG_INTERVAL = int(os.environ.get("STATE_SIZE_LOG_INTERVAL", "10"))
 VALUE_PADDING_BYTES = int(os.environ.get("VALUE_PADDING_BYTES", "800"))
 CONSUMER_GROUP = f"{CG_PREFIX}-{CG_VERSION}"
 
-_ROCKSDB_OPTS = RocksDBOptions(
+# Version-tolerant options: legacy_records_ttl / ttl_changelog_tombstones are
+# feature-branch additions that release/v3.24.0 (the TTL preview) predates, so
+# passing them unconditionally would crash the app on that pin. Gate them on the
+# installed build's actual constructor signature so the SAME harness runs on
+# release/v3.24.0 (stage 2) and this build (stage 3) without a code change.
+_supported_opts = set(inspect.signature(RocksDBOptions).parameters)
+_opts_kwargs = dict(
     write_buffer_size=int(os.environ.get("ROCKSDB_WRITE_BUFFER_SIZE", str(4 * 1024 * 1024))),
     target_file_size_base=int(os.environ.get("ROCKSDB_TARGET_FILE_SIZE_BASE", str(2 * 1024 * 1024))),
     max_write_buffer_number=int(os.environ.get("ROCKSDB_MAX_WRITE_BUFFER_NUMBER", "2")),
+)
+if "legacy_records_ttl" in _supported_opts:
     # Only set in TTL mode; in seeder mode it stays None (inert, Rule 1).
-    legacy_records_ttl=(
+    _opts_kwargs["legacy_records_ttl"] = (
         timedelta(seconds=LEGACY_RECORDS_TTL_SECONDS)
         if (TTL_MODE and LEGACY_RECORDS_TTL_SECONDS > 0)
         else None
-    ),
-    ttl_changelog_tombstones=TTL_CHANGELOG_TOMBSTONES,
-)
+    )
+if "ttl_changelog_tombstones" in _supported_opts:
+    _opts_kwargs["ttl_changelog_tombstones"] = TTL_CHANGELOG_TOMBSTONES
+_ROCKSDB_OPTS = RocksDBOptions(**_opts_kwargs)
 
 _PADDING = "x" * VALUE_PADDING_BYTES
 
@@ -142,8 +152,10 @@ else:
 
 print(
     f"[STARTUP] TTL_MODE={'on' if TTL_MODE else 'off'} consumer_group="
-    f"{CONSUMER_GROUP} legacy_records_ttl={_ROCKSDB_OPTS.legacy_records_ttl} "
-    f"ttl_changelog_tombstones={'on' if TTL_CHANGELOG_TOMBSTONES else 'off'}",
+    f"{CONSUMER_GROUP} "
+    f"legacy_records_ttl={getattr(_ROCKSDB_OPTS, 'legacy_records_ttl', 'unsupported')} "
+    f"ttl_changelog_tombstones={'on' if TTL_CHANGELOG_TOMBSTONES else 'off'} "
+    f"qs_opts_supported={'legacy_records_ttl' in _supported_opts}",
     flush=True,
 )
 
