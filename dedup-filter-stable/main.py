@@ -89,7 +89,7 @@ STATE_DIR = os.environ.get("STATE_DIR", "state")
 STATE_SIZE_LOG_INTERVAL = int(os.environ.get("STATE_SIZE_LOG_INTERVAL", "10"))
 VALUE_PADDING_BYTES = int(os.environ.get("VALUE_PADDING_BYTES", "800"))
 MAX_EVICTIONS_PER_FLUSH = _envint("MAX_EVICTIONS_PER_FLUSH", 70000)
-COMMIT_INTERVAL = _envfloat("COMMIT_INTERVAL", 0.0001)
+COMMIT_INTERVAL = _envfloat("COMMIT_INTERVAL", 0.001)
 CONSUMER_GROUP = f"{CG_PREFIX}-{CG_VERSION}"
 
 # Version-tolerant options: legacy_records_ttl / ttl_changelog_tombstones are
