@@ -273,7 +273,7 @@ deployments:
       - name: VALUE_PADDING_BYTES
         inputType: FreeText
         description: Pad each stored value with this many bytes (apples-to-apples across filters).
-        value: 2000
+        value: 300
       - name: CG_PREFIX
         inputType: FreeText
         description: Consumer-group prefix (state namespace). Per service to isolate stores.
