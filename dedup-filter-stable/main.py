@@ -8,6 +8,7 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
+
 from quixstreams import Application
 from quixstreams.state.rocksdb.options import RocksDBOptions
 
