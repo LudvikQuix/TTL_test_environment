@@ -257,8 +257,8 @@ deployments:
     state:
       enabled: true
       size: 5
-      path: /app/state3
-    desiredStatus: Running
+      path: /app/state2
+    desiredStatus: Stopped
     variables:
       - name: input
         inputType: InputTopic
@@ -297,7 +297,7 @@ deployments:
       - name: LOGGER
         inputType: FreeText
         description: on/off. off disables the periodic status logger (skips its per-interval rocksdb key scan). Set off in production.
-        value: off
+        value: on
       - name: TTL_CHANGELOG_TOMBSTONES
         inputType: FreeText
         description: 1 = TTL sweep also deletes expired keys from the changelog topic (compaction shrinks it). 0 = local-only sweep, changelog keeps every record.
@@ -305,7 +305,7 @@ deployments:
       - name: QUIXSTREAMS_STATE_LOG_LEVEL
         inputType: FreeText
         description: Log level for the quixstreams state layer (DEBUG shows per-chunk backfill/migration progress).
-        value: INFO
+        value: DEBUG
       - name: STATE_SIZE_LOG_INTERVAL
         inputType: FreeText
         description: Seconds between periodic [STATE-SIZE-STABLE] status lines (when LOGGER=on).
