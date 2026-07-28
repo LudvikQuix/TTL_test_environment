@@ -258,7 +258,7 @@ deployments:
       enabled: true
       size: 5
       path: /app/state2
-    desiredStatus: Stopped
+    desiredStatus: Running
     variables:
       - name: input
         inputType: InputTopic
@@ -297,7 +297,7 @@ deployments:
       - name: LOGGER
         inputType: FreeText
         description: on/off. off disables the periodic status logger (skips its per-interval rocksdb key scan). Set off in production.
-        value: on
+        value: off
       - name: TTL_CHANGELOG_TOMBSTONES
         inputType: FreeText
         description: 1 = TTL sweep also deletes expired keys from the changelog topic (compaction shrinks it). 0 = local-only sweep, changelog keeps every record.
