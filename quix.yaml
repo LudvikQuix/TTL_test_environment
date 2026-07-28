@@ -14,7 +14,7 @@ deployments:
       limits:
         cpu: 200
         memory: 200
-    desiredStatus: Running
+    desiredStatus: Stopped
     variables:
       - name: output
         inputType: OutputTopic
@@ -256,7 +256,7 @@ deployments:
         memory: 2000
     state:
       enabled: true
-      size: 2
+      size: 5
       path: /app/state
     desiredStatus: Stopped
     variables:
