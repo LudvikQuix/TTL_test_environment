@@ -14,7 +14,7 @@ deployments:
       limits:
         cpu: 200
         memory: 200
-    desiredStatus: Stopped
+    desiredStatus: Running
     variables:
       - name: output
         inputType: OutputTopic
@@ -24,7 +24,7 @@ deployments:
       - name: KEY_SPACE
         inputType: FreeText
         description: Upper bound for random order IDs (1..KEY_SPACE). Larger = more unique keys = faster state growth downstream.
-        value: 20000000
+        value: 40000000
       - name: MESSAGE_COUNT
         inputType: FreeText
         description: Total messages to produce, then exit. 0 = run forever (Service mode).
@@ -258,7 +258,7 @@ deployments:
       enabled: true
       size: 5
       path: /app/state1
-    desiredStatus: Stopped
+    desiredStatus: Running
     variables:
       - name: input
         inputType: InputTopic
