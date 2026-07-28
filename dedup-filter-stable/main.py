@@ -125,7 +125,7 @@ _session_seen: set = set()
 # returning -1 forever (which is what hides an internal-API rename).
 _counter_error_logged = False
 
-
+# honey
 def _log_counter_error(where: str, exc: BaseException) -> None:
     global _counter_error_logged
     if not _counter_error_logged:
