@@ -14,7 +14,7 @@ deployments:
       limits:
         cpu: 200
         memory: 200
-    desiredStatus: Stopped
+    desiredStatus: Running
     variables:
       - name: output
         inputType: OutputTopic
@@ -32,7 +32,7 @@ deployments:
       - name: SLEEP_SECONDS
         inputType: FreeText
         description: Delay between messages in seconds. Default 0.01 = ~100 msg/s.
-        value: 0.0001
+        value: 0.00001
       - name: SEED
         inputType: FreeText
         description: Optional integer seed for random. Set to make the sequence reproducible.
@@ -258,7 +258,7 @@ deployments:
       enabled: true
       size: 5
       path: /app/state
-    desiredStatus: Stopped
+    desiredStatus: Running
     variables:
       - name: input
         inputType: InputTopic
