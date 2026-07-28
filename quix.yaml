@@ -258,7 +258,7 @@ deployments:
       enabled: true
       size: 5
       path: /app/state2
-    desiredStatus: Running
+    desiredStatus: Stopped
     variables:
       - name: input
         inputType: InputTopic
@@ -281,7 +281,7 @@ deployments:
       - name: CG_VERSION
         inputType: FreeText
         description: Consumer-group suffix (e.g. v1). Bump for a fresh clean store, no code change.
-        value: v14
+        value: v15
       - name: TTL_MODE
         inputType: FreeText
         description: 0 = legacy seeder (no ttl=, byte-identical to 3.23.6). 1 = TTL build (ttl= + legacy_records_ttl -> flip+backfill).
@@ -297,7 +297,7 @@ deployments:
       - name: LOGGER
         inputType: FreeText
         description: on/off. off disables the periodic status logger (skips its per-interval rocksdb key scan). Set off in production.
-        value: on
+        value: off
       - name: TTL_CHANGELOG_TOMBSTONES
         inputType: FreeText
         description: 1 = TTL sweep also deletes expired keys from the changelog topic (compaction shrinks it). 0 = local-only sweep, changelog keeps every record.
