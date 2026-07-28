@@ -14,7 +14,7 @@ deployments:
       limits:
         cpu: 200
         memory: 200
-    desiredStatus: Running
+    desiredStatus: Stopped
     variables:
       - name: output
         inputType: OutputTopic
@@ -297,7 +297,7 @@ deployments:
       - name: LOGGER
         inputType: FreeText
         description: on/off. off disables the periodic status logger (skips its per-interval rocksdb key scan). Set off in production.
-        value: on
+        value: off
       - name: TTL_CHANGELOG_TOMBSTONES
         inputType: FreeText
         description: 1 = TTL sweep also deletes expired keys from the changelog topic (compaction shrinks it). 0 = local-only sweep, changelog keeps every record.
