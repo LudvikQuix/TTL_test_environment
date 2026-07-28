@@ -5,8 +5,6 @@ import time
 from datetime import timedelta
 
 from dotenv import load_dotenv
-#hello
-
 
 load_dotenv()
 
