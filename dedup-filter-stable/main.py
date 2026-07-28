@@ -214,7 +214,7 @@ else:
 print(
     f"[STARTUP] TTL_MODE={'on' if TTL_MODE else 'off'} consumer_group="
     f"{CONSUMER_GROUP} "
-    f"legacy_records_ttl={getattr(_ROCKSDB_OPTS, 'legacy_records_ttl', 'unsupported')
+    f"legacy_records_ttl={getattr(_ROCKSDB_OPTS, 'legacy_records_ttl', 'unsupported')}
     f"ttl_changelog_tombstones={'on' if TTL_CHANGELOG_TOMBSTONES else 'off'} "
     f"qs_opts_supported={'legacy_records_ttl' in _supported_opts}",
     flush=True,
