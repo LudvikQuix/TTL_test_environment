@@ -248,7 +248,7 @@ deployments:
   - name: Dedup Filter BackFill
     group: v1.1
     application: dedup-filter-stable
-    version: 8994b8e0284d3ffc078cb02e7ff20c840794434b
+    version: latest
     deploymentType: Service
     resources:
       limits:
