@@ -257,7 +257,7 @@ deployments:
     state:
       enabled: true
       size: 5
-      path: /app/state2
+      path: /app/state3
     desiredStatus: Running
     variables:
       - name: input
