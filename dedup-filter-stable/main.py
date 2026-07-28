@@ -73,8 +73,8 @@ LEGACY_RECORDS_TTL_SECONDS = int(os.environ.get("LEGACY_RECORDS_TTL_SECONDS", "3
 STATE_DIR = os.environ.get("STATE_DIR", "state")
 STATE_SIZE_LOG_INTERVAL = int(os.environ.get("STATE_SIZE_LOG_INTERVAL", "10"))
 VALUE_PADDING_BYTES = int(os.environ.get("VALUE_PADDING_BYTES", "800"))
-MAX_EVICTIONS_PER_FLUSH = int(os.environ.get("MAX_EVICTIONS_PER_FLUSH", "10000"))
-COMMIT_INTERVAL = float(os.environ.get("COMMIT_INTERVAL", "5.0"))
+MAX_EVICTIONS_PER_FLUSH = int(os.environ.get("MAX_EVICTIONS_PER_FLUSH", "70000"))
+COMMIT_INTERVAL = float(os.environ.get("COMMIT_INTERVAL", "0.0001"))
 CONSUMER_GROUP = f"{CG_PREFIX}-{CG_VERSION}"
 
 # Version-tolerant options: legacy_records_ttl / ttl_changelog_tombstones are
