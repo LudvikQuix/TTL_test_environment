@@ -8,7 +8,6 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-
 from quixstreams import Application
 from quixstreams.state.rocksdb.options import RocksDBOptions
 
@@ -24,9 +23,6 @@ from quixstreams.state.rocksdb.options import RocksDBOptions
 #                           first write flips + backfills the legacy records.
 #   CG_PREFIX  : consumer-group prefix (per service, e.g. "dedup-filter").
 #   CG_VERSION : consumer-group suffix (e.g. "v1"). Bump for a fresh store.
-#                           first write flips + backfills the legacy records.
-#   CG_PREFIX  : consumer-group prefix (per service, e.g. "dedup-filter").
-#   CG_VERSION : consumer-group suffix (e.g. "v1"). Bump for a fresh store.
 #   STATE_TTL_SECONDS / LEGACY_RECORDS_TTL_SECONDS : per-write ttl= and the
 #                one-time legacy backfill TTL.
 #   LOGGER     : "on"/"off". off disables the periodic status logger (skips its
@@ -36,6 +32,10 @@ from quixstreams.state.rocksdb.options import RocksDBOptions
 # Drain-rate knobs (tombstone sweep throughput = evictions / commit_interval):
 #   MAX_EVICTIONS_PER_FLUSH : cap on TTL evictions per checkpoint. Default 10_000.
 #                Present in BOTH release/v3.24.0 and this build, so unconditional.
+#                MEASURED: 70_000 @ commit_interval=0.001 gives ~89k evictions/s
+#                with a worst-case checkpoint of 1.05s (0.35% of a 300s poll
+#                interval) — safe. The 10_000 default only sustains ~300/s once
+#                checkpoints grow, which loses the race against expiry.
 #   COMMIT_INTERVAL : seconds between checkpoints. Default 5.0. Lowering this is
 #                preferable to raising the eviction cap: same rate, but each
 #                unguarded prepare() step stays small. Below ~the fixed cost of a
@@ -51,19 +51,34 @@ from quixstreams.state.rocksdb.options import RocksDBOptions
 #   a huge store. To project honestly, shrink BLOCK_CACHE_SIZE so the test's
 #   cache-to-data ratio matches the target, or measure at several ratios.
 #
-# The image installs the sc-73191 build @bcd7cccd (crash-window fixes: expired-
-# replay supersession, offset-caught-up completion, EOS migration producer; plus
-# sweep changelog tombstones + progress-based backfill flush). The backfill
-# STARTED/progress/FINISHED logs come from quix-streams regardless of LOGGER.
+# The quixstreams build is pinned ONLY in requirements.txt. The deployment's
+# gitReference is a fixed COMMIT, so a push alone never changes what is built —
+# PATCH the deployment's gitReference to the new repo commit, then start it.
+# The backfill STARTED/progress/FINISHED logs come from quix-streams regardless
+# of LOGGER.
 # ---------------------------------------------------------------------------
 def _envflag(name: str, default: str = "0") -> bool:
     return os.environ.get(name, default).strip().lower() in ("1", "true", "yes", "on")
 
 
+# The Portal happily stores an env var with an EMPTY value, and
+# os.environ.get(name, "10000") then returns "" — not the default — so a bare
+# int()/float() would raise ValueError at import and the service would never
+# start. Treat empty/whitespace as "unset".
+def _envint(name: str, default: int) -> int:
+    raw = os.environ.get(name, "").strip()
+    return int(raw) if raw else default
+
+
+def _envfloat(name: str, default: float) -> float:
+    raw = os.environ.get(name, "").strip()
+    return float(raw) if raw else default
+
+
 TTL_MODE = _envflag("TTL_MODE", "1")
-# Sweep changelog tombstones (bcd7cccd build): 1 = expired keys are also
-# deleted from the changelog topic (compaction shrinks it); 0 = old behavior,
-# local-only sweep, changelog keeps every record.
+# Sweep changelog tombstones: 1 = expired keys are also deleted from the
+# changelog topic (compaction shrinks it); 0 = old behavior, local-only sweep,
+# changelog keeps every record.
 TTL_CHANGELOG_TOMBSTONES = _envflag("TTL_CHANGELOG_TOMBSTONES", "1")
 LOGGER_ENABLED = _envflag("LOGGER", "on")
 CG_PREFIX = os.environ.get("CG_PREFIX", "dedup-filter").strip()
@@ -73,8 +88,8 @@ LEGACY_RECORDS_TTL_SECONDS = int(os.environ.get("LEGACY_RECORDS_TTL_SECONDS", "3
 STATE_DIR = os.environ.get("STATE_DIR", "state")
 STATE_SIZE_LOG_INTERVAL = int(os.environ.get("STATE_SIZE_LOG_INTERVAL", "10"))
 VALUE_PADDING_BYTES = int(os.environ.get("VALUE_PADDING_BYTES", "800"))
-MAX_EVICTIONS_PER_FLUSH = int(os.environ.get("MAX_EVICTIONS_PER_FLUSH", "70000"))
-COMMIT_INTERVAL = float(os.environ.get("COMMIT_INTERVAL", "0.0001"))
+MAX_EVICTIONS_PER_FLUSH = _envint("MAX_EVICTIONS_PER_FLUSH", 70000)
+COMMIT_INTERVAL = _envfloat("COMMIT_INTERVAL", 0.001)
 CONSUMER_GROUP = f"{CG_PREFIX}-{CG_VERSION}"
 
 # Version-tolerant options: legacy_records_ttl / ttl_changelog_tombstones are
@@ -123,7 +138,7 @@ _session_seen: set = set()
 # returning -1 forever (which is what hides an internal-API rename).
 _counter_error_logged = False
 
-# honey
+
 def _log_counter_error(where: str, exc: BaseException) -> None:
     global _counter_error_logged
     if not _counter_error_logged:
@@ -211,19 +226,26 @@ if LOGGER_ENABLED:
 else:
     print("[STARTUP] LOGGER=off — periodic status logger disabled", flush=True)
 
+# Pulled out of the f-string below: a long line with nested quotes is the one
+# that keeps getting truncated on copy/paste.
+_ttl_opt = getattr(_ROCKSDB_OPTS, "legacy_records_ttl", "unsupported")
+_opts_ok = "legacy_records_ttl" in _supported_opts
+_mode = "on" if TTL_MODE else "off"
+_tombstones = "on" if TTL_CHANGELOG_TOMBSTONES else "off"
+
 print(
-    f"[STARTUP] TTL_MODE={'on' if TTL_MODE else 'off'} consumer_group="
-    f"{CONSUMER_GROUP} "
-    f"legacy_records_ttl={getattr(_ROCKSDB_OPTS, 'legacy_records_ttl', 'unsupported')}
-    f"ttl_changelog_tombstones={'on' if TTL_CHANGELOG_TOMBSTONES else 'off'} "
-    f"qs_opts_supported={'legacy_records_ttl' in _supported_opts}",
+    f"[STARTUP] TTL_MODE={_mode} "
+    f"consumer_group={CONSUMER_GROUP} "
+    f"legacy_records_ttl={_ttl_opt} "
+    f"ttl_changelog_tombstones={_tombstones} "
+    f"qs_opts_supported={_opts_ok}",
     flush=True,
 )
 print(
     f"[STARTUP-DRAIN] max_evictions_per_flush={MAX_EVICTIONS_PER_FLUSH} "
     f"commit_interval={COMMIT_INTERVAL} "
-    f"=> target_eviction_rate={MAX_EVICTIONS_PER_FLUSH / COMMIT_INTERVAL:.0f}/s "
-    f"(actual rate is capped by checkpoint duration, not this ratio) "
+    f"=> naive_rate={MAX_EVICTIONS_PER_FLUSH / COMMIT_INTERVAL:.0f}/s "
+    f"(the real rate is capped by checkpoint duration, not this ratio) "
     f"write_buffer_size={_ROCKSDB_OPTS.write_buffer_size} "
     f"target_file_size_base={_ROCKSDB_OPTS.target_file_size_base} "
     f"max_write_buffer_number={_ROCKSDB_OPTS.max_write_buffer_number} "
