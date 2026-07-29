@@ -258,7 +258,7 @@ deployments:
       enabled: true
       size: 5
       path: /app/state1
-    desiredStatus: Stopped
+    desiredStatus: Running
     variables:
       - name: input
         inputType: InputTopic
@@ -310,18 +310,6 @@ deployments:
         inputType: FreeText
         description: Seconds between periodic [STATE-SIZE-STABLE] status lines (when LOGGER=on).
         value: 10
-      - name: ROCKSDB_WRITE_BUFFER_SIZE
-        inputType: FreeText
-        description: RocksDB write buffer size in bytes (memtable). Test-env tuning knob.
-        value: 1048576
-      - name: ROCKSDB_TARGET_FILE_SIZE_BASE
-        inputType: FreeText
-        description: RocksDB target SST file size in bytes. Test-env tuning knob.
-        value: 2097152
-      - name: ROCKSDB_MAX_WRITE_BUFFER_NUMBER
-        inputType: FreeText
-        description: Max RocksDB write buffers (memtables) per store partition.
-        value: 2
   - name: Rebalance Generator
     application: duplicate-key-generator
     version: latest
