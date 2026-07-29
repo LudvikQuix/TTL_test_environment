@@ -258,7 +258,7 @@ deployments:
       enabled: true
       size: 6
       path: /app/state17
-    desiredStatus: Stopped
+    desiredStatus: Running
     variables:
       - name: input
         inputType: InputTopic
@@ -322,6 +322,10 @@ deployments:
         inputType: FreeText
         description: Seconds between checkpoints. A checkpoint's cost is mostly fixed (producer flush + offset commit), so shrinking this buys no sweep throughput and starves message processing.
         value: 1.0
+      - name: STATE_DIR
+        inputType: FreeText
+        description: Explicit RocksDB state dir. A fresh subdir of the mounted volume forces one cold rebuild from the changelog, then stays warm.
+        value: /app/state17/run2
   - name: Rebalance Generator
     application: duplicate-key-generator
     version: latest
