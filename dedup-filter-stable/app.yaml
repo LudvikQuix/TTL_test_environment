@@ -14,7 +14,7 @@ variables:
   - name: VALUE_PADDING_BYTES
     inputType: FreeText
     description: Pad each stored value with this many bytes (apples-to-apples across filters).
-    defaultValue: "1000"
+    defaultValue: "1"
     required: false
   - name: CG_PREFIX
     inputType: FreeText
@@ -61,20 +61,20 @@ variables:
     description: Seconds between periodic [STATE-SIZE-STABLE] status lines (when LOGGER=on).
     defaultValue: "10"
     required: false
-  - name: ROCKSDB_WRITE_BUFFER_SIZE
+  - name: MAX_EVICTIONS_PER_FLUSH
     inputType: FreeText
-    description: RocksDB write buffer size in bytes (memtable). Test-env tuning knob.
-    defaultValue: "4194304"
+    description: "TTL sweep budget: expired keys evicted per checkpoint. The throughput dial — raise this, not the commit interval. Library default 150000."
+    defaultValue: "200000"
     required: false
-  - name: ROCKSDB_TARGET_FILE_SIZE_BASE
+  - name: LEGACY_BACKFILL_CHUNK_SIZE
     inputType: FreeText
-    description: RocksDB target SST file size in bytes. Test-env tuning knob.
-    defaultValue: "2097152"
+    description: Records re-stamped per write-batch during the one-time legacy backfill. Bounds peak transient memory to one chunk. Library default 150000.
+    defaultValue: "200000"
     required: false
-  - name: ROCKSDB_MAX_WRITE_BUFFER_NUMBER
+  - name: COMMIT_INTERVAL
     inputType: FreeText
-    description: Max RocksDB write buffers (memtables) per store partition.
-    defaultValue: "2"
+    description: Seconds between checkpoints. A checkpoint's cost is mostly fixed (producer flush + offset commit), so shrinking this buys no sweep throughput and starves message processing.
+    defaultValue: "1.0"
     required: false
 dockerfile: build/dockerfile
 runEntryPoint: main.py

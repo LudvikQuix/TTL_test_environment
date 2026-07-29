@@ -273,7 +273,7 @@ deployments:
       - name: VALUE_PADDING_BYTES
         inputType: FreeText
         description: Pad each stored value with this many bytes (apples-to-apples across filters).
-        value: 2000
+        value: 1
       - name: CG_PREFIX
         inputType: FreeText
         description: Consumer-group prefix (state namespace). Per service to isolate stores.
@@ -281,7 +281,7 @@ deployments:
       - name: CG_VERSION
         inputType: FreeText
         description: Consumer-group suffix (e.g. v1). Bump for a fresh clean store, no code change.
-        value: v12
+        value: v16
       - name: TTL_MODE
         inputType: FreeText
         description: 0 = legacy seeder (no ttl=, byte-identical to 3.23.6). 1 = TTL build (ttl= + legacy_records_ttl -> flip+backfill).
@@ -310,18 +310,18 @@ deployments:
         inputType: FreeText
         description: Seconds between periodic [STATE-SIZE-STABLE] status lines (when LOGGER=on).
         value: 10
-      - name: ROCKSDB_WRITE_BUFFER_SIZE
+      - name: MAX_EVICTIONS_PER_FLUSH
         inputType: FreeText
-        description: RocksDB write buffer size in bytes (memtable). Test-env tuning knob.
-        value: 1048576
-      - name: ROCKSDB_TARGET_FILE_SIZE_BASE
+        description: "TTL sweep budget: expired keys evicted per checkpoint. The throughput dial — raise this, not the commit interval. Library default 150000."
+        value: 200000
+      - name: LEGACY_BACKFILL_CHUNK_SIZE
         inputType: FreeText
-        description: RocksDB target SST file size in bytes. Test-env tuning knob.
-        value: 2097152
-      - name: ROCKSDB_MAX_WRITE_BUFFER_NUMBER
+        description: Records re-stamped per write-batch during the one-time legacy backfill. Bounds peak transient memory to one chunk. Library default 150000.
+        value: 200000
+      - name: COMMIT_INTERVAL
         inputType: FreeText
-        description: Max RocksDB write buffers (memtables) per store partition.
-        value: 2
+        description: Seconds between checkpoints. A checkpoint's cost is mostly fixed (producer flush + offset commit), so shrinking this buys no sweep throughput and starves message processing.
+        value: 1.0
   - name: Rebalance Generator
     application: duplicate-key-generator
     version: latest

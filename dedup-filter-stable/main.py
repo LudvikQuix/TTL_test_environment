@@ -26,30 +26,89 @@ from quixstreams.state.rocksdb.options import RocksDBOptions
 #   STATE_TTL_SECONDS / LEGACY_RECORDS_TTL_SECONDS : per-write ttl= and the
 #                one-time legacy backfill TTL.
 #   LOGGER     : "on"/"off". off disables the periodic status logger (skips its
-#                per-interval O(keys) rocksdb scan) — set off in production.
+#                per-interval O(keys) rocksdb scan) — set off in production AND
+#                for any timing run, where the scan contends with what you time.
 #
-# The image installs the sc-73191 build @bcd7cccd (crash-window fixes: expired-
-# replay supersession, offset-caught-up completion, EOS migration producer; plus
-# sweep changelog tombstones + progress-based backfill flush). The backfill
-# STARTED/progress/FINISHED logs come from quix-streams regardless of LOGGER.
+# Drain-rate knobs (tombstone sweep throughput = evictions / commit_interval):
+#   MAX_EVICTIONS_PER_FLUSH : cap on TTL evictions per checkpoint. Default 10_000.
+#                Present in BOTH release/v3.24.0 and this build, so unconditional.
+#                MEASURED: 70_000 @ commit_interval=0.001 gives ~89k evictions/s
+#                with a worst-case checkpoint of 1.05s (0.35% of a 300s poll
+#                interval) — safe. The 10_000 default only sustains ~300/s once
+#                checkpoints grow, which loses the race against expiry.
+#   COMMIT_INTERVAL : seconds between checkpoints. Default 5.0. Lowering this is
+#                preferable to raising the eviction cap: same rate, but each
+#                unguarded prepare() step stays small. Below ~the fixed cost of a
+#                commit (producer flush barrier + offset commit) the interval
+#                stops throttling and checkpoints just run back-to-back.
+#
+# RocksDB tuning (ROCKSDB_*/BLOCK_CACHE_SIZE): UNSET -> inherit library defaults
+#   (64 MiB write buffer, 64 MiB target file, 3 buffers, 128 MiB block cache).
+#   Set them only to deliberately stress flush/compaction at small scale — small
+#   values make a delete-heavy drain look far worse than production. NOTE for
+#   extrapolation: point-get throughput tracks block-cache hit rate, so a rate
+#   measured on a small fixture (large cache-to-data ratio) is OPTIMISTIC versus
+#   a huge store. To project honestly, shrink BLOCK_CACHE_SIZE so the test's
+#   cache-to-data ratio matches the target, or measure at several ratios.
+#
+# The quixstreams build is pinned ONLY in requirements.txt. The deployment's
+# gitReference is a fixed COMMIT, so a push alone never changes what is built —
+# PATCH the deployment's gitReference to the new repo commit, then start it.
+# The backfill STARTED/progress/FINISHED logs come from quix-streams regardless
+# of LOGGER.
 # ---------------------------------------------------------------------------
 def _envflag(name: str, default: str = "0") -> bool:
     return os.environ.get(name, default).strip().lower() in ("1", "true", "yes", "on")
 
 
+# The Portal happily stores an env var with an EMPTY value, and
+# os.environ.get(name, "10000") then returns "" — not the default — so a bare
+# int()/float() would raise ValueError at import and the service would never
+# start. Treat empty/whitespace as "unset".
+def _envint(name: str, default: int) -> int:
+    raw = os.environ.get(name, "").strip()
+    return int(raw) if raw else default
+
+
+def _envfloat(name: str, default: float) -> float:
+    raw = os.environ.get(name, "").strip()
+    return float(raw) if raw else default
+
+
 TTL_MODE = _envflag("TTL_MODE", "1")
-# Sweep changelog tombstones (bcd7cccd build): 1 = expired keys are also
-# deleted from the changelog topic (compaction shrinks it); 0 = old behavior,
-# local-only sweep, changelog keeps every record.
+# Sweep changelog tombstones: 1 = expired keys are also deleted from the
+# changelog topic (compaction shrinks it); 0 = old behavior, local-only sweep,
+# changelog keeps every record.
 TTL_CHANGELOG_TOMBSTONES = _envflag("TTL_CHANGELOG_TOMBSTONES", "1")
 LOGGER_ENABLED = _envflag("LOGGER", "on")
 CG_PREFIX = os.environ.get("CG_PREFIX", "dedup-filter").strip()
 CG_VERSION = os.environ.get("CG_VERSION", "v1").strip()
 STATE_TTL_SECONDS = int(os.environ.get("STATE_TTL_SECONDS", "30"))
 LEGACY_RECORDS_TTL_SECONDS = int(os.environ.get("LEGACY_RECORDS_TTL_SECONDS", "30"))
-STATE_DIR = os.environ.get("STATE_DIR", "state")
+# Follow the PLATFORM's state dir by default. Quix mounts the persistent volume
+# at a path it chooses (/app/state1, /app/state2, ... — it increments) and
+# exposes it as Quix__State__Dir; quixstreams reads that value purely to WARN
+# about a mismatch (platforms/quix/checks.py:47) and then leaves you running on
+# the wrong, ephemeral path. Hardcoding "state" therefore silently discards the
+# store on every restart. An explicit STATE_DIR still wins, so set it (e.g. to
+# "state") only when you deliberately WANT a cold restore.
+# Resolution order mirrors quixstreams' own (platforms/quix/env.py:51-66):
+# Quix__Deployment__State__Path is what the PLATFORM sets; Quix__State__Dir is a
+# deprecated user override that also triggers a DeprecationWarning.
+STATE_DIR = (
+    os.environ.get("STATE_DIR")
+    or os.environ.get("Quix__Deployment__State__Path")
+    or os.environ.get("Quix__State__Dir")
+    or "state"
+)
+# If this is not "true" there is NO persistent volume at all and no STATE_DIR
+# value can help — it must be enabled in the Portal deployment settings.
+STATE_MGMT_ENABLED = os.environ.get("Quix__Deployment__State__Enabled", "") == "true"
 STATE_SIZE_LOG_INTERVAL = int(os.environ.get("STATE_SIZE_LOG_INTERVAL", "10"))
 VALUE_PADDING_BYTES = int(os.environ.get("VALUE_PADDING_BYTES", "800"))
+MAX_EVICTIONS_PER_FLUSH = _envint("MAX_EVICTIONS_PER_FLUSH", 200000)
+LEGACY_BACKFILL_CHUNK_SIZE = _envint("LEGACY_BACKFILL_CHUNK_SIZE", 200000)
+COMMIT_INTERVAL = _envfloat("COMMIT_INTERVAL", 1.0)
 CONSUMER_GROUP = f"{CG_PREFIX}-{CG_VERSION}"
 
 # Version-tolerant options: legacy_records_ttl / ttl_changelog_tombstones are
@@ -57,12 +116,31 @@ CONSUMER_GROUP = f"{CG_PREFIX}-{CG_VERSION}"
 # passing them unconditionally would crash the app on that pin. Gate them on the
 # installed build's actual constructor signature so the SAME harness runs on
 # release/v3.24.0 (stage 2) and this build (stage 3) without a code change.
+# max_evictions_per_flush exists on BOTH pins, so it needs no gate.
 _supported_opts = set(inspect.signature(RocksDBOptions).parameters)
 _opts_kwargs = dict(
-    write_buffer_size=int(os.environ.get("ROCKSDB_WRITE_BUFFER_SIZE", str(4 * 1024 * 1024))),
-    target_file_size_base=int(os.environ.get("ROCKSDB_TARGET_FILE_SIZE_BASE", str(2 * 1024 * 1024))),
-    max_write_buffer_number=int(os.environ.get("ROCKSDB_MAX_WRITE_BUFFER_NUMBER", "2")),
+    max_evictions_per_flush=MAX_EVICTIONS_PER_FLUSH,
 )
+
+# RocksDB tuning: only override when the env var is explicitly set, so an unset
+# var inherits the library default rather than silently pinning a small value.
+# Each is also signature-gated, so setting one on an older pin cannot crash.
+for _env_name, _opt_name in (
+    ("ROCKSDB_WRITE_BUFFER_SIZE", "write_buffer_size"),
+    ("ROCKSDB_TARGET_FILE_SIZE_BASE", "target_file_size_base"),
+    ("ROCKSDB_MAX_WRITE_BUFFER_NUMBER", "max_write_buffer_number"),
+    ("BLOCK_CACHE_SIZE", "block_cache_size"),
+):
+    _raw = os.environ.get(_env_name, "").strip()
+    if _raw and _opt_name in _supported_opts:
+        _opts_kwargs[_opt_name] = int(_raw)
+
+# legacy_backfill_chunk_size is a feature-branch addition (absent in
+# release/v3.24.0), so it MUST be signature-gated like legacy_records_ttl or the
+# 3.24.0 seed run crashes at construction.
+if "legacy_backfill_chunk_size" in _supported_opts:
+    _opts_kwargs["legacy_backfill_chunk_size"] = LEGACY_BACKFILL_CHUNK_SIZE
+
 if "legacy_records_ttl" in _supported_opts:
     # Only set in TTL mode; in seeder mode it stays None (inert, Rule 1).
     _opts_kwargs["legacy_records_ttl"] = (
@@ -81,6 +159,21 @@ _PADDING = "x" * VALUE_PADDING_BYTES
 # purely as an activity signal. The real numbers come from RocksDB below.
 _session_seen: set = set()
 
+# One-shot flag so a counter failure is reported once instead of silently
+# returning -1 forever (which is what hides an internal-API rename).
+_counter_error_logged = False
+
+
+def _log_counter_error(where: str, exc: BaseException) -> None:
+    global _counter_error_logged
+    if not _counter_error_logged:
+        _counter_error_logged = True
+        print(
+            f"[STATE-SIZE-ERROR] {where} failed ({type(exc).__name__}: {exc}); "
+            f"counters will report -1 from here on",
+            flush=True,
+        )
+
 
 def _dir_size_bytes(path: str) -> int:
     total = 0
@@ -97,9 +190,14 @@ def _iter_partitions():
     # _state_manager.stores is {stream_id: {store_name: Store}} — two dict
     # levels, then the Store, then its partitions. (The old code stopped one
     # level short and silently hit the except branch, hence rocksdb_keys=-1.)
-    for stream_stores in app._state_manager.stores.values():
-        for store in stream_stores.values():
-            for partition in store.partitions.values():
+    #
+    # Snapshot each level with list(): this runs on a background thread while a
+    # rebalance can add/remove stores and partitions, and iterating a live dict
+    # raises "dictionary changed size during iteration" — a SECOND cause of the
+    # -1 readings, distinct from the depth bug above.
+    for stream_stores in list(app._state_manager.stores.values()):
+        for store in list(stream_stores.values()):
+            for partition in list(store.partitions.values()):
                 yield partition
 
 
@@ -114,19 +212,22 @@ def _rocksdb_est_keys() -> int:
             if n is not None:
                 total += int(n)
         return total
-    except Exception:
+    except Exception as exc:
+        _log_counter_error("_rocksdb_est_keys", exc)
         return -1
 
 
 def _rocksdb_exact_keys() -> int:
     """Exact count of keys in the default CF across partitions — the real
-    persisted entry count. O(keys); fine at test scale."""
+    persisted entry count. O(keys); fine at test scale, but it scans the store
+    on every interval, so keep LOGGER=off for any timing run."""
     try:
         total = 0
         for partition in _iter_partitions():
             total += sum(1 for _ in partition._db.keys())
         return total
-    except Exception:
+    except Exception as exc:
+        _log_counter_error("_rocksdb_exact_keys", exc)
         return -1
 
 
@@ -150,12 +251,47 @@ if LOGGER_ENABLED:
 else:
     print("[STARTUP] LOGGER=off — periodic status logger disabled", flush=True)
 
+# Pulled out of the f-string below: a long line with nested quotes is the one
+# that keeps getting truncated on copy/paste.
+_ttl_opt = getattr(_ROCKSDB_OPTS, "legacy_records_ttl", "unsupported")
+_opts_ok = "legacy_records_ttl" in _supported_opts
+_mode = "on" if TTL_MODE else "off"
+# Report the EFFECTIVE state, not the env var: on release/v3.24.0 the option
+# does not exist and was gated out of _opts_kwargs, so echoing "on" would claim
+# a feature the build cannot do.
+_tombstones = (
+    ("on" if TTL_CHANGELOG_TOMBSTONES else "off")
+    if "ttl_changelog_tombstones" in _supported_opts
+    else "unsupported"
+)
+
 print(
-    f"[STARTUP] TTL_MODE={'on' if TTL_MODE else 'off'} consumer_group="
-    f"{CONSUMER_GROUP} "
-    f"legacy_records_ttl={getattr(_ROCKSDB_OPTS, 'legacy_records_ttl', 'unsupported')} "
-    f"ttl_changelog_tombstones={'on' if TTL_CHANGELOG_TOMBSTONES else 'off'} "
-    f"qs_opts_supported={'legacy_records_ttl' in _supported_opts}",
+    f"[STARTUP] TTL_MODE={_mode} "
+    f"consumer_group={CONSUMER_GROUP} "
+    f"legacy_records_ttl={_ttl_opt} "
+    f"ttl_changelog_tombstones={_tombstones} "
+    f"qs_opts_supported={_opts_ok}",
+    flush=True,
+)
+print(
+    f"[STARTUP-DRAIN] max_evictions_per_flush={MAX_EVICTIONS_PER_FLUSH} "
+    f"legacy_backfill_chunk_size="
+    f"{LEGACY_BACKFILL_CHUNK_SIZE if 'legacy_backfill_chunk_size' in _supported_opts else 'unsupported'} "
+    f"commit_interval={COMMIT_INTERVAL} "
+    f"=> naive_rate={MAX_EVICTIONS_PER_FLUSH / COMMIT_INTERVAL:.0f}/s "
+    f"(the real rate is capped by checkpoint duration, not this ratio) "
+    f"write_buffer_size={_ROCKSDB_OPTS.write_buffer_size} "
+    f"target_file_size_base={_ROCKSDB_OPTS.target_file_size_base} "
+    f"max_write_buffer_number={_ROCKSDB_OPTS.max_write_buffer_number} "
+    f"block_cache_size={_ROCKSDB_OPTS.block_cache_size} "
+    f"state_ttl_s={STATE_TTL_SECONDS} value_padding_bytes={VALUE_PADDING_BYTES}",
+    flush=True,
+)
+print(
+    f"[STARTUP-STATE] state_dir={STATE_DIR!r} "
+    f"platform_state_path={os.environ.get('Quix__Deployment__State__Path')!r} "
+    f"state_management_enabled={STATE_MGMT_ENABLED} "
+    f"=> {'WARM (state persists)' if STATE_MGMT_ENABLED and STATE_DIR == os.environ.get('Quix__Deployment__State__Path') else 'COLD (state is EPHEMERAL — full changelog replay every restart)'}",
     flush=True,
 )
 
@@ -163,6 +299,7 @@ app = Application(
     consumer_group=CONSUMER_GROUP,
     state_dir=STATE_DIR,
     rocksdb_options=_ROCKSDB_OPTS,
+    commit_interval=COMMIT_INTERVAL,
 )
 input_topic = app.topic(os.environ["input"], value_deserializer="json")
 output_topic = app.topic(os.environ["output"], value_serializer="json")
