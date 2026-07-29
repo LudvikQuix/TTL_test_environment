@@ -252,13 +252,13 @@ deployments:
     deploymentType: Service
     resources:
       limits:
-        cpu: 500
+        cpu: 1000
         memory: 2000
     state:
       enabled: true
       size: 5
       path: /app/state
-    desiredStatus: Stopped
+    desiredStatus: Running
     variables:
       - name: input
         inputType: InputTopic
