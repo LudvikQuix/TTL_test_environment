@@ -98,7 +98,7 @@ STATE_DIR = (
     or os.environ.get("Quix__State__Dir")
     or "state"
 ).strip()
-STATE_DIR=/app/state17/run2
+STATE_DIR="/app/state17/run2"
 STATE_MGMT_ENABLED = os.environ.get("Quix__Deployment__State__Enabled", "") == "true"
 STATE_SIZE_LOG_INTERVAL = int(os.environ.get("STATE_SIZE_LOG_INTERVAL", "10"))
 VALUE_PADDING_BYTES = int(os.environ.get("VALUE_PADDING_BYTES", "800"))
