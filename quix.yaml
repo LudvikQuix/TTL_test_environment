@@ -258,7 +258,7 @@ deployments:
       enabled: true
       size: 5
       path: /app/state1
-    desiredStatus: Running
+    desiredStatus: Stopped
     variables:
       - name: input
         inputType: InputTopic
@@ -312,7 +312,7 @@ deployments:
         value: 10
       - name: MAX_EVICTIONS_PER_FLUSH
         inputType: FreeText
-        description: "TTL sweep budget: expired keys evicted per checkpoint. The throughput dial - raise this, not the commit interval. Library default 150000."
+        description: 'TTL sweep budget: expired keys evicted per checkpoint. The throughput dial - raise this, not the commit interval. Library default 150000.'
         value: 200000
       - name: LEGACY_BACKFILL_CHUNK_SIZE
         inputType: FreeText
