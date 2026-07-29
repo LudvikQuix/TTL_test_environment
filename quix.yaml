@@ -14,7 +14,7 @@ deployments:
       limits:
         cpu: 200
         memory: 200
-    desiredStatus: Running
+    desiredStatus: Stopped
     variables:
       - name: output
         inputType: OutputTopic
@@ -24,7 +24,7 @@ deployments:
       - name: KEY_SPACE
         inputType: FreeText
         description: Upper bound for random order IDs (1..KEY_SPACE). Larger = more unique keys = faster state growth downstream.
-        value: 150000
+        value: 40000000
       - name: MESSAGE_COUNT
         inputType: FreeText
         description: Total messages to produce, then exit. 0 = run forever (Service mode).
@@ -32,7 +32,7 @@ deployments:
       - name: SLEEP_SECONDS
         inputType: FreeText
         description: Delay between messages in seconds. Default 0.01 = ~100 msg/s.
-        value: 0.0001
+        value: 0.00001
       - name: SEED
         inputType: FreeText
         description: Optional integer seed for random. Set to make the sequence reproducible.
@@ -248,7 +248,7 @@ deployments:
   - name: Dedup Filter BackFill
     group: v1.1
     application: dedup-filter-stable
-    version: 805f75a33e37febe7c005993dbd4fd79180f75c2
+    version: latest
     deploymentType: Service
     resources:
       limits:
@@ -256,8 +256,8 @@ deployments:
         memory: 2000
     state:
       enabled: true
-      size: 2
-      path: /app/state
+      size: 5
+      path: /app/state1
     desiredStatus: Running
     variables:
       - name: input
@@ -312,7 +312,7 @@ deployments:
         value: 10
       - name: MAX_EVICTIONS_PER_FLUSH
         inputType: FreeText
-        description: "TTL sweep budget: expired keys evicted per checkpoint. The throughput dial — raise this, not the commit interval. Library default 150000."
+        description: "TTL sweep budget: expired keys evicted per checkpoint. The throughput dial - raise this, not the commit interval. Library default 150000."
         value: 200000
       - name: LEGACY_BACKFILL_CHUNK_SIZE
         inputType: FreeText
@@ -462,6 +462,8 @@ deployments:
 # This section describes the Topics of the data pipeline
 topics:
   - name: raw-events
+    configuration:
+      retentionInBytes: 314572800
   - name: deduped-events
   - name: deduped-events-no-ttl
   - name: deduped-events-stable

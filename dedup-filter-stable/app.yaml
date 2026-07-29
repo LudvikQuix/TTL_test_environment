@@ -63,7 +63,7 @@ variables:
     required: false
   - name: MAX_EVICTIONS_PER_FLUSH
     inputType: FreeText
-    description: "TTL sweep budget: expired keys evicted per checkpoint. The throughput dial — raise this, not the commit interval. Library default 150000."
+    description: "TTL sweep budget: expired keys evicted per checkpoint. The throughput dial - raise this, not the commit interval. Library default 150000."
     defaultValue: "200000"
     required: false
   - name: LEGACY_BACKFILL_CHUNK_SIZE

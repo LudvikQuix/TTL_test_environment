@@ -85,24 +85,19 @@ CG_PREFIX = os.environ.get("CG_PREFIX", "dedup-filter").strip()
 CG_VERSION = os.environ.get("CG_VERSION", "v1").strip()
 STATE_TTL_SECONDS = int(os.environ.get("STATE_TTL_SECONDS", "30"))
 LEGACY_RECORDS_TTL_SECONDS = int(os.environ.get("LEGACY_RECORDS_TTL_SECONDS", "30"))
-# Follow the PLATFORM's state dir by default. Quix mounts the persistent volume
-# at a path it chooses (/app/state1, /app/state2, ... — it increments) and
-# exposes it as Quix__State__Dir; quixstreams reads that value purely to WARN
-# about a mismatch (platforms/quix/checks.py:47) and then leaves you running on
-# the wrong, ephemeral path. Hardcoding "state" therefore silently discards the
-# store on every restart. An explicit STATE_DIR still wins, so set it (e.g. to
-# "state") only when you deliberately WANT a cold restore.
-# Resolution order mirrors quixstreams' own (platforms/quix/env.py:51-66):
-# Quix__Deployment__State__Path is what the PLATFORM sets; Quix__State__Dir is a
-# deprecated user override that also triggers a DeprecationWarning.
+# State dir resolution. A bare default of "state" is a relative path, so it
+# lands on the container's ephemeral disk rather than the mounted state volume
+# -- the store then looks empty on every restart and the app does a full
+# changelog replay while reporting "Recovery successful". The platform mounts
+# the volume and exports its path as Quix__Deployment__State__Path, so fall back
+# to that before giving up on a relative dir. Quix__State__Dir is the deprecated
+# spelling, kept for older workspaces.
 STATE_DIR = (
     os.environ.get("STATE_DIR")
     or os.environ.get("Quix__Deployment__State__Path")
     or os.environ.get("Quix__State__Dir")
     or "state"
-)
-# If this is not "true" there is NO persistent volume at all and no STATE_DIR
-# value can help — it must be enabled in the Portal deployment settings.
+).strip()
 STATE_MGMT_ENABLED = os.environ.get("Quix__Deployment__State__Enabled", "") == "true"
 STATE_SIZE_LOG_INTERVAL = int(os.environ.get("STATE_SIZE_LOG_INTERVAL", "10"))
 VALUE_PADDING_BYTES = int(os.environ.get("VALUE_PADDING_BYTES", "800"))
@@ -134,12 +129,6 @@ for _env_name, _opt_name in (
     _raw = os.environ.get(_env_name, "").strip()
     if _raw and _opt_name in _supported_opts:
         _opts_kwargs[_opt_name] = int(_raw)
-
-# legacy_backfill_chunk_size is a feature-branch addition (absent in
-# release/v3.24.0), so it MUST be signature-gated like legacy_records_ttl or the
-# 3.24.0 seed run crashes at construction.
-if "legacy_backfill_chunk_size" in _supported_opts:
-    _opts_kwargs["legacy_backfill_chunk_size"] = LEGACY_BACKFILL_CHUNK_SIZE
 
 if "legacy_records_ttl" in _supported_opts:
     # Only set in TTL mode; in seeder mode it stays None (inert, Rule 1).
@@ -256,14 +245,7 @@ else:
 _ttl_opt = getattr(_ROCKSDB_OPTS, "legacy_records_ttl", "unsupported")
 _opts_ok = "legacy_records_ttl" in _supported_opts
 _mode = "on" if TTL_MODE else "off"
-# Report the EFFECTIVE state, not the env var: on release/v3.24.0 the option
-# does not exist and was gated out of _opts_kwargs, so echoing "on" would claim
-# a feature the build cannot do.
-_tombstones = (
-    ("on" if TTL_CHANGELOG_TOMBSTONES else "off")
-    if "ttl_changelog_tombstones" in _supported_opts
-    else "unsupported"
-)
+_tombstones = "on" if TTL_CHANGELOG_TOMBSTONES else "off"
 
 print(
     f"[STARTUP] TTL_MODE={_mode} "
@@ -275,8 +257,6 @@ print(
 )
 print(
     f"[STARTUP-DRAIN] max_evictions_per_flush={MAX_EVICTIONS_PER_FLUSH} "
-    f"legacy_backfill_chunk_size="
-    f"{LEGACY_BACKFILL_CHUNK_SIZE if 'legacy_backfill_chunk_size' in _supported_opts else 'unsupported'} "
     f"commit_interval={COMMIT_INTERVAL} "
     f"=> naive_rate={MAX_EVICTIONS_PER_FLUSH / COMMIT_INTERVAL:.0f}/s "
     f"(the real rate is capped by checkpoint duration, not this ratio) "
@@ -287,11 +267,17 @@ print(
     f"state_ttl_s={STATE_TTL_SECONDS} value_padding_bytes={VALUE_PADDING_BYTES}",
     flush=True,
 )
+# Warm/cold verdict up front: if the resolved state dir is not the volume the
+# platform mounted, the store is on ephemeral disk and every restart replays the
+# whole changelog -- which otherwise only shows up as a puzzling recovery on a
+# deployment that "has state".
+_platform_state_path = os.environ.get("Quix__Deployment__State__Path")
+_warm = STATE_MGMT_ENABLED and STATE_DIR == _platform_state_path
 print(
     f"[STARTUP-STATE] state_dir={STATE_DIR!r} "
-    f"platform_state_path={os.environ.get('Quix__Deployment__State__Path')!r} "
-    f"state_management_enabled={STATE_MGMT_ENABLED} "
-    f"=> {'WARM (state persists)' if STATE_MGMT_ENABLED and STATE_DIR == os.environ.get('Quix__Deployment__State__Path') else 'COLD (state is EPHEMERAL — full changelog replay every restart)'}",
+    f"platform_state_path={_platform_state_path!r} "
+    f"state_mgmt_enabled={STATE_MGMT_ENABLED} "
+    f"=> {'WARM (state persists)' if _warm else 'COLD (state is EPHEMERAL - full changelog replay every restart)'}",
     flush=True,
 )
 
