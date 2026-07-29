@@ -254,10 +254,6 @@ deployments:
       limits:
         cpu: 500
         memory: 2000
-    state:
-      enabled: true
-      size: 5
-      path: /app/state17
     desiredStatus: Stopped
     variables:
       - name: input
