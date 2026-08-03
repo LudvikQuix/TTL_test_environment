@@ -12,5 +12,11 @@ def billing_events():
     """)
 
 
+@canvas.ai(position=(1131, 128), size=(560, 420), code_height=200, viz={'aiMode': 'agent'})
+def ai_1(billing_events):
+    """Analyse this billing data please"""
+    # ql-ai-mode: agent
+
+
 if __name__ == "__main__":
     canvas.serve()
