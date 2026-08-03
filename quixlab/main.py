@@ -15,7 +15,7 @@ def billing_events():
     # ql-ai-mode: agent
 
 
-@canvas.datastore(position=(1303, 90), size=(560, 420), code_height=120, viz={'datastore': True, 'sourceNode': 'ai_1'})
+@canvas.datastore(position=(1486, -784), size=(560, 420), code_height=120, viz={'datastore': True, 'sourceNode': 'ai_1'})
 def ai_1_store(ai_1):
     return ql.datastore("ai_1_store")
 
@@ -31,7 +31,7 @@ def credit_type_summary(billing_events):
     return summary.sort_values("total_ms", ascending=False)
 
 
-@canvas.cell(position=(2034, 225), size=(560, 420), code_height=200, viz={'type': 'bar', 'x': 'day', 'y': ['quixlab-dataset', 'quixlab-cell', 'quixlab-notebook']})
+@canvas.cell(position=(1414, -41), size=(560, 420), code_height=200, viz={'type': 'bar', 'x': 'day', 'y': ['quixlab-dataset', 'quixlab-cell', 'quixlab-notebook']})
 def daily_cost_by_type(billing_events):
     df = billing_events.copy()
     df["day"] = df["event_datetime"].str.slice(0, 10)
