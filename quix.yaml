@@ -462,7 +462,7 @@ deployments:
         inputType: FreeText
         description: quixstreams logger level. DEBUG surfaces the per-attempt open line used for max_lock_attempt. No per-message DEBUG in the hot path.
         value: DEBUG
-  - name: Dedup CF A (3.25.0 unfixed)
+  - name: Dedup CF A2 (3.25.0 unfixed)
     application: dedup-cf-a
     version: latest
     deploymentType: Service
@@ -473,7 +473,7 @@ deployments:
     state:
       enabled: true
       size: 1
-      path: /app/state-cf-a
+      path: /app/statecfa2
     desiredStatus: Stopped
     variables:
       - name: input
@@ -488,8 +488,8 @@ deployments:
         value: deduped-events
       - name: VALUE_PADDING_BYTES
         inputType: FreeText
-        description: Pad each stored value with this many bytes (apples-to-apples across filters).
-        value: 800
+        description: MUST equal the state path above, or the store lands on ephemeral container disk and every restart is a cold rebuild - which hides the reopen bug entirely.
+        value: /app/statecfa2
       - name: CG_PREFIX
         inputType: FreeText
         description: Consumer-group prefix (state namespace). Per service to isolate stores.
@@ -522,25 +522,7 @@ deployments:
         inputType: FreeText
         description: Log level for the quixstreams state layer (DEBUG shows per-chunk backfill/migration progress).
         value: INFO
-      - name: STATE_SIZE_LOG_INTERVAL
-        inputType: FreeText
-        description: Seconds between periodic [STATE-SIZE-STABLE] status lines (when LOGGER=on).
-        value: 10
-      - name: MAX_EVICTIONS_PER_FLUSH
-        inputType: FreeText
-        description: 'TTL sweep budget: expired keys evicted per checkpoint. The throughput dial - raise this, not the commit interval. Library default 150000.'
-        value: 200000
-      - name: LEGACY_BACKFILL_CHUNK_SIZE
-        inputType: FreeText
-        description: Records re-stamped per write-batch during the one-time legacy backfill. Bounds peak transient memory to one chunk. Library default 150000.
-        value: 200000
-      - name: COMMIT_INTERVAL
-        inputType: FreeText
-        description: Seconds between checkpoints. A checkpoint's cost is mostly fixed (producer flush + offset commit), so shrinking this buys no sweep throughput and starves message processing.
-        value: 1.0
-    blobStorage:
-      bind: true
-  - name: Dedup CF B (PR1137 fixed)
+  - name: Dedup CF B2 (PR1137 fixed)
     application: dedup-cf-b
     version: latest
     deploymentType: Service
@@ -551,7 +533,7 @@ deployments:
     state:
       enabled: true
       size: 1
-      path: /app/state-cf-b
+      path: /app/statecfb2
     desiredStatus: Stopped
     variables:
       - name: input
@@ -567,7 +549,7 @@ deployments:
       - name: STATE_DIR
         inputType: FreeText
         description: MUST equal the state path above, or the store lands on ephemeral container disk and every restart is a cold rebuild - which hides the reopen bug entirely.
-        value: /app/state-cf-b
+        value: /app/statecfb2
       - name: CG_PREFIX
         inputType: FreeText
         description: Consumer-group prefix (state namespace), per arm so the two stores never collide.
