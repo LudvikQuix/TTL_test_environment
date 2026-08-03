@@ -64,6 +64,22 @@ def _find_logs(state_dir):
     return sorted(found)
 
 
+def _rotated_log_count(store_dir):
+    """
+    How many times RocksDB has opened this store BEFORE now.
+
+    RocksDB rotates LOG to LOG.old.<ts> on every open, so a count of 0 means
+    this process CREATED the store and no reopen has happened -- which is the
+    one case where the options-dropping bug cannot show up. On an ephemeral
+    volume this stays 0 forever no matter how often the deployment restarts,
+    so it distinguishes "restarted" from "actually reopened a persisted store".
+    """
+    try:
+        return sum(1 for f in os.listdir(store_dir) if f.startswith("LOG.old."))
+    except OSError:
+        return -1
+
+
 def report(state_dir, tag="BLOCKCACHE", publish=None, label=""):
     """
     Print one line per store partition. Returns the number of partitions seen so
@@ -85,7 +101,9 @@ def report(state_dir, tag="BLOCKCACHE", publish=None, label=""):
             continue
         caps, filters = parsed
         seen += 1
-        rel = os.path.relpath(os.path.dirname(log_path), state_dir)
+        store_dir = os.path.dirname(log_path)
+        rel = os.path.relpath(store_dir, state_dir)
+        reopens = _rotated_log_count(store_dir)
         uniq_caps = sorted(set(caps))
         uniq_filters = sorted(set(filters))
         # A reopen that dropped the options reports 8388608 / nullptr. Flag it
@@ -96,7 +114,7 @@ def report(state_dir, tag="BLOCKCACHE", publish=None, label=""):
             f"[STARTUP-{tag}] store={rel} "
             f"block_cache_capacity={uniq_caps} "
             f"filter_policy={uniq_filters} "
-            f"cf_count={len(caps)} => {verdict}"
+            f"cf_count={len(caps)} reopens={reopens} => {verdict}"
         )
         print(line, flush=True)
         if publish is not None:
@@ -108,6 +126,9 @@ def report(state_dir, tag="BLOCKCACHE", publish=None, label=""):
                         "block_cache_capacity": uniq_caps,
                         "filter_policy": uniq_filters,
                         "cf_count": len(caps),
+                        "reopens": reopens,
+                        "state_dir": state_dir,
+                        "warm": os.environ.get("Quix__Deployment__State__Path") == state_dir,
                         "degraded": degraded,
                         "verdict": verdict,
                     }
