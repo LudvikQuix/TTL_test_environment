@@ -462,58 +462,6 @@ deployments:
         inputType: FreeText
         description: quixstreams logger level. DEBUG surfaces the per-attempt open line used for max_lock_attempt. No per-message DEBUG in the hot path.
         value: DEBUG
-  - name: Dedup CF A (3.25.0 unfixed)
-    application: dedup-cf-a
-    version: 6b631e96e1c51e70f80f5d4cce3692088924a767
-    deploymentType: Service
-    resources:
-      limits:
-        cpu: 200
-        memory: 400
-    state:
-      enabled: true
-      size: 1
-      path: /app/state-cf-a
-    variables:
-      - name: input
-        inputType: InputTopic
-        value: raw-events
-      - name: output
-        inputType: OutputTopic
-        value: deduped-events
-      - name: CG_PREFIX
-        inputType: FreeText
-        value: dedup-cf-a
-      - name: CG_VERSION
-        inputType: FreeText
-        value: v1
-      - name: TTL_MODE
-        inputType: FreeText
-        value: 1
-      - name: STATE_TTL_SECONDS
-        inputType: FreeText
-        value: 3600
-      - name: VALUE_PADDING_BYTES
-        inputType: FreeText
-        value: 800
-      - name: LOGGER
-        inputType: FreeText
-        value: off
-      - name: COMMIT_INTERVAL
-        inputType: FreeText
-        value: 1.0
-      - name: QUIXSTREAMS_STATE_LOG_LEVEL
-        inputType: FreeText
-        value: INFO
-      - name: BLOCK_CACHE_PROBE_REPEAT_S
-        inputType: FreeText
-        value: 120
-      - name: BLOCK_CACHE_SIZE
-        inputType: FreeText
-        value: 33554432
-      - name: STATE_DIR
-        inputType: FreeText
-        value: /app/state-cf-a
   - name: Dedup CF B (bb6dca18 fixed)
     application: dedup-cf-b
     version: 6b631e96e1c51e70f80f5d4cce3692088924a767
