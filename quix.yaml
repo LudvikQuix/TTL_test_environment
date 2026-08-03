@@ -468,8 +468,8 @@ deployments:
     deploymentType: Service
     resources:
       limits:
-        cpu: 500
-        memory: 1000
+        cpu: 200
+        memory: 500
     state:
       enabled: true
       size: 6
