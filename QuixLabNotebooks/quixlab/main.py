@@ -8,7 +8,7 @@ def billing_events():
     return ql.sql("""SELECT *
     FROM billing_events
     WHERE environment_id = 'testrigorg-ingestionpipelineforreal-6deb6d8f'
-    ORDER BY ts_ms""")
+    """)
 
 
 if __name__ == "__main__":
