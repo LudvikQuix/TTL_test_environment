@@ -513,7 +513,7 @@ deployments:
         value: 33554432
   - name: Dedup CF B (bb6dca18 fixed)
     application: dedup-cf-b
-    version: 528ab052da90e156900a38b000d28db0206e4c65
+    version: 8cb65222c0f6632e15c559fb04f7c7abb04b08f1
     deploymentType: Service
     resources:
       limits:
