@@ -462,7 +462,7 @@ deployments:
         inputType: FreeText
         description: quixstreams logger level. DEBUG surfaces the per-attempt open line used for max_lock_attempt. No per-message DEBUG in the hot path.
         value: DEBUG
-  - name: Dedup CF A (3.25.0 unfixed)
+  - name: Dedup CF A2 (3.25.0 unfixed)
     application: dedup-cf-a
     version: latest
     deploymentType: Service
@@ -473,7 +473,7 @@ deployments:
     state:
       enabled: true
       size: 1
-      path: /app/state-cf-a
+      path: /app/statecfa2
     desiredStatus: Stopped
     variables:
       - name: input
@@ -489,7 +489,7 @@ deployments:
       - name: STATE_DIR
         inputType: FreeText
         description: MUST equal the state path above, or the store lands on ephemeral container disk and every restart is a cold rebuild - which hides the reopen bug entirely.
-        value: /app/state-cf-a
+        value: /app/statecfa2
       - name: CG_PREFIX
         inputType: FreeText
         description: Consumer-group prefix (state namespace), per arm so the two stores never collide.
@@ -530,7 +530,7 @@ deployments:
         inputType: FreeText
         description: State-layer log level.
         value: INFO
-  - name: Dedup CF B (PR1137 fixed)
+  - name: Dedup CF B2 (PR1137 fixed)
     application: dedup-cf-b
     version: latest
     deploymentType: Service
@@ -541,7 +541,7 @@ deployments:
     state:
       enabled: true
       size: 1
-      path: /app/state-cf-b
+      path: /app/statecfb2
     desiredStatus: Stopped
     variables:
       - name: input
@@ -557,7 +557,7 @@ deployments:
       - name: STATE_DIR
         inputType: FreeText
         description: MUST equal the state path above, or the store lands on ephemeral container disk and every restart is a cold rebuild - which hides the reopen bug entirely.
-        value: /app/state-cf-b
+        value: /app/statecfb2
       - name: CG_PREFIX
         inputType: FreeText
         description: Consumer-group prefix (state namespace), per arm so the two stores never collide.
