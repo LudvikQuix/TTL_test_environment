@@ -1,4 +1,5 @@
 import inspect
+import json
 import os
 import threading
 import time
@@ -110,6 +111,11 @@ COMMIT_INTERVAL = _envfloat("COMMIT_INTERVAL", 1.0)
 # 0 = report the effective RocksDB table options once, when the first
 # partition opens. >0 = keep re-reporting on that interval.
 BLOCK_CACHE_PROBE_REPEAT_S = _envfloat("BLOCK_CACHE_PROBE_REPEAT_S", 0.0)
+# Quix exposes no REST endpoint for runtime logs, so the probe's verdict is
+# also produced to this topic -- the only way to collect it from outside the
+# container.
+BLOCK_CACHE_VERDICT_TOPIC = os.environ.get("BLOCK_CACHE_VERDICT_TOPIC", "blockcache-verdict")
+ARM_LABEL = os.environ.get("ARM_LABEL", CG_PREFIX)
 CONSUMER_GROUP = f"{CG_PREFIX}-{CG_VERSION}"
 
 # Version-tolerant options: legacy_records_ttl / ttl_changelog_tombstones are
@@ -287,12 +293,6 @@ print(
     flush=True,
 )
 
-# Report what RocksDB is ACTUALLY running with, per store partition. On an
-# unfixed SDK this prints capacity=134217728/bloomfilter on the run that
-# creates the store and capacity=8388608/nullptr on every restart after it --
-# the whole point of this A/B. Polls because partitions open on assignment.
-block_cache_probe.start(STATE_DIR, repeat_s=BLOCK_CACHE_PROBE_REPEAT_S or None)
-
 app = Application(
     consumer_group=CONSUMER_GROUP,
     state_dir=STATE_DIR,
@@ -301,6 +301,32 @@ app = Application(
 )
 input_topic = app.topic(os.environ["input"], value_deserializer="json")
 output_topic = app.topic(os.environ["output"], value_serializer="json")
+
+_verdict_topic = app.topic(BLOCK_CACHE_VERDICT_TOPIC, value_serializer="json")
+
+
+def _publish_verdict(payload):
+    """One short-lived producer per report: this runs on a background thread a
+    couple of times per process, so pooling would buy nothing and sharing the
+    app's producer across threads would not be safe."""
+    with app.get_producer() as producer:
+        producer.produce(
+            topic=_verdict_topic.name,
+            key=str(payload.get("label", "")).encode(),
+            value=json.dumps(payload).encode(),
+        )
+
+
+# Report what RocksDB is ACTUALLY running with, per store partition. On an
+# unfixed SDK this reports the configured cache/bloomfilter on the run that
+# CREATES the store and 8388608/nullptr on every restart after it -- the whole
+# point of this A/B. Polls because partitions open on assignment, not here.
+block_cache_probe.start(
+    STATE_DIR,
+    repeat_s=BLOCK_CACHE_PROBE_REPEAT_S or None,
+    publish=_publish_verdict,
+    label=ARM_LABEL,
+)
 
 sdf = app.dataframe(input_topic)
 
