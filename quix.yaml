@@ -464,7 +464,7 @@ deployments:
         value: DEBUG
   - name: Dedup CF A (3.25.0 unfixed)
     application: dedup-cf-a
-    version: 528ab052da90e156900a38b000d28db0206e4c65
+    version: 8cb65222c0f6632e15c559fb04f7c7abb04b08f1
     deploymentType: Service
     resources:
       limits:
