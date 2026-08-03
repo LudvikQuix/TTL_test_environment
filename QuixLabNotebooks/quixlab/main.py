@@ -46,7 +46,7 @@ def top_deployments_by_cost(billing_events):
     return df
 
 
-@canvas.cell(position=(656, -36), size=(560, 420), code_height=200)
+@canvas.cell(position=(656, -376), size=(560, 420), code_height=200)
 def cell_2(billing_events):
     return billing_events
 
