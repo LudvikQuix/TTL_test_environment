@@ -20,7 +20,7 @@ def ai_1_store(ai_1):
     return ql.datastore("ai_1_store")
 
 
-@canvas.cell(position=(1137, 128), size=(560, 420), code_height=200)
+@canvas.cell(position=(2128, 231), size=(560, 420), code_height=200)
 def cell_1(billing_events):
     return billing_events
 
