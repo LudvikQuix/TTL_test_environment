@@ -15,7 +15,7 @@ def billing_events():
     # ql-ai-mode: agent
 
 
-@canvas.datastore(position=(1751, 128), size=(560, 420), code_height=120, viz={'datastore': True, 'sourceNode': 'ai_1'})
+@canvas.datastore(position=(1369, -128), size=(560, 420), code_height=120, viz={'datastore': True, 'sourceNode': 'ai_1'})
 def ai_1_store(ai_1):
     return ql.datastore("ai_1_store")
 
