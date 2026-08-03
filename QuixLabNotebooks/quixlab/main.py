@@ -20,7 +20,7 @@ def ai_1(billing_events):
 
 @canvas.ai(position=(1171, 695), size=(560, 420), code_height=200)
 def ai_2(billing_events):
-    """Describe what to compute from @billing_events — plain English, not code."""
+    """Aggregate different credit_type per"""
 
 
 if __name__ == "__main__":
