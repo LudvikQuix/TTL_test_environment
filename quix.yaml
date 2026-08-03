@@ -464,7 +464,7 @@ deployments:
         value: DEBUG
   - name: Dedup CF A (3.25.0 unfixed)
     application: dedup-cf-a
-    version: d547db1b42f7dd0330a02b1e58a3da715c0f3ec9
+    version: 6b631e96e1c51e70f80f5d4cce3692088924a767
     deploymentType: Service
     resources:
       limits:
@@ -511,6 +511,9 @@ deployments:
       - name: BLOCK_CACHE_SIZE
         inputType: FreeText
         value: 33554432
+      - name: STATE_DIR
+        inputType: FreeText
+        value: /app/state-cf-a
   - name: Dedup CF B (bb6dca18 fixed)
     application: dedup-cf-b
     version: d547db1b42f7dd0330a02b1e58a3da715c0f3ec9
