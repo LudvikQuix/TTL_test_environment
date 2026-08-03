@@ -18,9 +18,15 @@ def ai_1(billing_events):
     # ql-ai-mode: agent
 
 
-@canvas.ai(position=(1171, 695), size=(560, 420), code_height=200)
+@canvas.ai(position=(1171, 695), size=(573, 470), code_height=200)
 def ai_2(billing_events):
     """Aggregate different credit_types. Calculate sum, average, min and max."""
+    # ql-ai: generated from prompt 0a4c5b4e0cb9d975
+    agg = billing_events.groupby("credit_type")["duration_ms"].agg(
+        sum="sum", average="mean", min="min", max="max"
+    ).reset_index()
+
+    agg
 
 
 if __name__ == "__main__":
