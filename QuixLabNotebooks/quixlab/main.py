@@ -18,5 +18,10 @@ def ai_1(billing_events):
     # ql-ai-mode: agent
 
 
+@canvas.ai(position=(1171, 695), size=(560, 420), code_height=200)
+def ai_2(billing_events):
+    """Describe what to compute from @billing_events — plain English, not code."""
+
+
 if __name__ == "__main__":
     canvas.serve()
