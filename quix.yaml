@@ -507,6 +507,51 @@ deployments:
       - name: BLOCK_CACHE_PROBE_REPEAT_S
         inputType: FreeText
         value: 120
+  - name: Dedup CF B (bb6dca18 fixed)
+    application: dedup-cf-b
+    version: 528ab052da90e156900a38b000d28db0206e4c65
+    deploymentType: Service
+    resources:
+      limits:
+        cpu: 1000
+        memory: 2000
+    state:
+      enabled: true
+      size: 6
+    variables:
+      - name: input
+        inputType: InputTopic
+        value: raw-events
+      - name: output
+        inputType: OutputTopic
+        value: deduped-events-no-ttl
+      - name: CG_PREFIX
+        inputType: FreeText
+        value: dedup-cf-b
+      - name: CG_VERSION
+        inputType: FreeText
+        value: v1
+      - name: TTL_MODE
+        inputType: FreeText
+        value: 1
+      - name: STATE_TTL_SECONDS
+        inputType: FreeText
+        value: 3600
+      - name: VALUE_PADDING_BYTES
+        inputType: FreeText
+        value: 800
+      - name: LOGGER
+        inputType: FreeText
+        value: off
+      - name: COMMIT_INTERVAL
+        inputType: FreeText
+        value: 1.0
+      - name: QUIXSTREAMS_STATE_LOG_LEVEL
+        inputType: FreeText
+        value: INFO
+      - name: BLOCK_CACHE_PROBE_REPEAT_S
+        inputType: FreeText
+        value: 120
 
 # This section describes the Topics of the data pipeline
 topics:
