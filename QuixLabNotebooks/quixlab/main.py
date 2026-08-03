@@ -46,5 +46,10 @@ def top_deployments_by_cost(billing_events):
     return df
 
 
+@canvas.ai(position=(1137, 128), size=(560, 420), code_height=200)
+def ai_1(billing_events):
+    """D"""
+
+
 if __name__ == "__main__":
     canvas.serve()
