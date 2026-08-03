@@ -18,20 +18,6 @@ def billing_events():
 @canvas.ai(position=(1171, 695), size=(573, 470), code_height=200)
 def ai_2(billing_events):
     """Aggregate different credit_types. Calculate sum, average, min and max. Calculate this for each day."""
-    # ql-ai: generated from prompt 0dbedf70882143e8
-    import pandas as pd
-
-    df = billing_events.copy()
-    df["event_date"] = pd.to_datetime(df["event_datetime"]).dt.date
-
-    agg = (
-        df.groupby(["event_date", "credit_type"])["duration_ms"]
-        .agg(sum="sum", average="mean", min="min", max="max")
-        .reset_index()
-        .sort_values(["event_date", "credit_type"])
-    )
-
-    agg
 
 
 @canvas.datastore(position=(1751, 128), size=(560, 420), code_height=120, viz={'datastore': True, 'sourceNode': 'ai_1'})
