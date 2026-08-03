@@ -46,9 +46,25 @@ def top_deployments_by_cost(billing_events):
     return df
 
 
-@canvas.ai(position=(1137, 128), size=(560, 420), code_height=200)
+@canvas.ai(position=(437, -707), size=(560, 420), code_height=200)
 def ai_1(billing_events):
-    """D"""
+    """Plot credits burned per day per credit_type"""
+    # ql-ai: generated from prompt 2fd5810498346b39
+    df = billing_events.copy()
+    df["event_datetime"] = pd.to_datetime(df["event_datetime"])
+    df["day"] = df["event_datetime"].dt.date.astype(str)
+
+    daily = (
+        df.groupby(["day", "credit_type"])["duration_ms"]
+        .sum()
+        .reset_index()
+        .rename(columns={"duration_ms": "credits_burned"})
+    )
+
+    wide = daily.pivot_table(index="day", columns="credit_type", values="credits_burned", fill_value=0)
+    wide = wide.sort_index().reset_index()
+
+    ql.viz(wide, type="line", x="day", y=[c for c in wide.columns if c != "day"])
 
 
 if __name__ == "__main__":
