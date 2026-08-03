@@ -25,5 +25,14 @@ def cell_1(billing_events):
     return billing_events
 
 
+@canvas.cell(position=(2811, 999), size=(560, 420), code_height=200, viz={'type': 'line', 'x': 'n', 'y': ['fibonacci']})
+def fibonacci():
+    n = 20
+    fib = [0, 1]
+    for i in range(2, n):
+        fib.append(fib[-1] + fib[-2])
+    pd.DataFrame({"n": range(n), "fibonacci": fib})
+
+
 if __name__ == "__main__":
     canvas.serve()
