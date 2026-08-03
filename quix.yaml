@@ -474,7 +474,7 @@ deployments:
       enabled: true
       size: 1
       path: /app/statecfa2
-    desiredStatus: Running
+    desiredStatus: Stopped
     variables:
       - name: input
         inputType: InputTopic
