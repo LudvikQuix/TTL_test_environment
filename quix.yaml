@@ -51,7 +51,7 @@ deployments:
     state:
       enabled: true
       size: 1
-    desiredStatus: Running
+    desiredStatus: Stopped
     variables:
       - name: input
         inputType: InputTopic
@@ -214,6 +214,54 @@ deployments:
         inputType: FreeText
         description: Workspace permission required to bill (Create/Read/Update/Delete/Write/All).
         value: Write
+    blobStorage:
+      bind: true
+  - name: QuixLab
+    application: quixlab
+    version: latest
+    deploymentType: Service
+    resources:
+      limits:
+        cpu: 500
+        memory: 2000
+    publicAccess:
+      enabled: true
+      urlPrefix: quixlab
+    state:
+      enabled: true
+      size: 1
+    network:
+      ports:
+        - port: 80
+          targetPort: 80
+    variables:
+      - name: QUIXLAB_NOTEBOOK
+        inputType: FreeText
+        description: Notebook file to open on startup (leave empty for the file picker).
+        value: main.py
+      - name: QUIXLAB_MODE
+        inputType: Options
+        description: "Run mode: 'edit' opens the full editor (canvas, cell editing, file picker); 'app' renders the notebook in read-only output-only mode for end-user consumption."
+        value: edit
+      - name: QUIXLAB_LOG_LEVEL
+        inputType: Options
+        description: Logging verbosity for the QuixLab process. DEBUG emits per-token-source and per-HTTP-call detail useful for diagnosing 403s and auth-chain issues.
+        value: INFO
+    plugin:
+      embeddedView:
+        enabled: true
+        hideHeader: true
+        default: true
+      sidebarItem:
+        show: true
+        label: QuixLab
+        icon: grid_view
+        order: 1
+      globalItem:
+        show: true
+        label: QuixLab
+        icon: find_in_page
+        order: 1
     blobStorage:
       bind: true
 
