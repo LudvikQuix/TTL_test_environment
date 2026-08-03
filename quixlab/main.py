@@ -20,11 +20,6 @@ def ai_1_store(ai_1):
     return ql.datastore("ai_1_store")
 
 
-@canvas.cell(position=(2128, 231), size=(560, 420), code_height=200)
-def cell_1(billing_events):
-    return billing_events
-
-
 @canvas.cell(position=(2811, 999), size=(560, 420), code_height=200, viz={'type': 'line', 'x': 'n', 'y': ['fibonacci']})
 def fibonacci():
     n = 20
