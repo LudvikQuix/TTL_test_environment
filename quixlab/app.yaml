@@ -1,0 +1,34 @@
+name: quixlab
+language: docker
+variables:
+  - name: QUIXLAB_NOTEBOOK
+    inputType: FreeText
+    description: Notebook file to open on startup (leave empty for the file picker).
+    defaultValue: main.py
+  - name: QUIXLAB_MODE
+    inputType: Options
+    description: "Run mode: 'edit' opens the full editor (canvas, cell editing, file picker); 'app' renders the notebook in read-only output-only mode for end-user consumption."
+    defaultValue: edit
+    options:
+      - label: Edit (full editor)
+        value: edit
+      - label: App (view only)
+        value: app
+  - name: QUIXLAB_LOG_LEVEL
+    inputType: Options
+    description: Logging verbosity for the QuixLab process. DEBUG emits per-token-source and per-HTTP-call detail useful for diagnosing 403s and auth-chain issues.
+    defaultValue: INFO
+    options:
+      - label: DEBUG
+        value: DEBUG
+      - label: INFO
+        value: INFO
+      - label: WARNING
+        value: WARNING
+      - label: ERROR
+        value: ERROR
+dockerfile: dockerfile
+defaultFile: dockerfile
+libraryItemId: quixlab
+blobStorage:
+  bind: true
