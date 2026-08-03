@@ -462,8 +462,143 @@ deployments:
         inputType: FreeText
         description: quixstreams logger level. DEBUG surfaces the per-attempt open line used for max_lock_attempt. No per-message DEBUG in the hot path.
         value: DEBUG
+  - name: Dedup CF A (3.25.0 unfixed)
+    application: dedup-cf-a
+    version: latest
+    deploymentType: Service
+    resources:
+      limits:
+        cpu: 200
+        memory: 400
+    state:
+      enabled: true
+      size: 1
+      path: /app/state-cf-a
+    desiredStatus: Stopped
+    variables:
+      - name: input
+        inputType: InputTopic
+        description: Topic with raw events (shared input across both A/B arms)
+        required: true
+        value: raw-events
+      - name: output
+        inputType: OutputTopic
+        description: Topic with deduplicated events
+        required: true
+        value: deduped-events
+      - name: STATE_DIR
+        inputType: FreeText
+        description: MUST equal the state path above, or the store lands on ephemeral container disk and every restart is a cold rebuild - which hides the reopen bug entirely.
+        value: /app/state-cf-a
+      - name: CG_PREFIX
+        inputType: FreeText
+        description: Consumer-group prefix (state namespace), per arm so the two stores never collide.
+        value: dedup-cf-a
+      - name: CG_VERSION
+        inputType: FreeText
+        description: Consumer-group suffix. Bump for a fresh clean store.
+        value: v2
+      - name: TTL_MODE
+        inputType: FreeText
+        description: 1 = TTL build (ttl= per write), matching the customer's dedup workload.
+        value: 1
+      - name: STATE_TTL_SECONDS
+        inputType: FreeText
+        description: Per-write ttl= for new dedup entries, seconds.
+        value: 3600
+      - name: BLOCK_CACHE_SIZE
+        inputType: FreeText
+        description: Pinned small on BOTH arms - the test is whether the configured options survive a reopen, not how big the cache is. 33554432 vs the 8388608 rocksdict fallback is unambiguous and fits a 400 MB container.
+        value: 33554432
+      - name: BLOCK_CACHE_PROBE_REPEAT_S
+        inputType: FreeText
+        description: Re-report the effective RocksDB table options on this interval.
+        value: 60
+      - name: VALUE_PADDING_BYTES
+        inputType: FreeText
+        description: Pad each stored value so the store grows at a comparable rate on both arms.
+        value: 800
+      - name: LOGGER
+        inputType: FreeText
+        description: off - the periodic key-count scan is O(keys) and would distort timings.
+        value: off
+      - name: COMMIT_INTERVAL
+        inputType: FreeText
+        description: Checkpoint interval in seconds.
+        value: 1.0
+      - name: QUIXSTREAMS_STATE_LOG_LEVEL
+        inputType: FreeText
+        description: State-layer log level.
+        value: INFO
+  - name: Dedup CF B (PR1137 fixed)
+    application: dedup-cf-b
+    version: latest
+    deploymentType: Service
+    resources:
+      limits:
+        cpu: 200
+        memory: 400
+    state:
+      enabled: true
+      size: 1
+      path: /app/state-cf-b
+    desiredStatus: Stopped
+    variables:
+      - name: input
+        inputType: InputTopic
+        description: Topic with raw events (shared input across both A/B arms)
+        required: true
+        value: raw-events
+      - name: output
+        inputType: OutputTopic
+        description: Topic with deduplicated events
+        required: true
+        value: deduped-events-no-ttl
+      - name: STATE_DIR
+        inputType: FreeText
+        description: MUST equal the state path above, or the store lands on ephemeral container disk and every restart is a cold rebuild - which hides the reopen bug entirely.
+        value: /app/state-cf-b
+      - name: CG_PREFIX
+        inputType: FreeText
+        description: Consumer-group prefix (state namespace), per arm so the two stores never collide.
+        value: dedup-cf-b
+      - name: CG_VERSION
+        inputType: FreeText
+        description: Consumer-group suffix. Bump for a fresh clean store.
+        value: v2
+      - name: TTL_MODE
+        inputType: FreeText
+        description: 1 = TTL build (ttl= per write), matching the customer's dedup workload.
+        value: 1
+      - name: STATE_TTL_SECONDS
+        inputType: FreeText
+        description: Per-write ttl= for new dedup entries, seconds.
+        value: 3600
+      - name: BLOCK_CACHE_SIZE
+        inputType: FreeText
+        description: Pinned small on BOTH arms - the test is whether the configured options survive a reopen, not how big the cache is. 33554432 vs the 8388608 rocksdict fallback is unambiguous and fits a 400 MB container.
+        value: 33554432
+      - name: BLOCK_CACHE_PROBE_REPEAT_S
+        inputType: FreeText
+        description: Re-report the effective RocksDB table options on this interval.
+        value: 60
+      - name: VALUE_PADDING_BYTES
+        inputType: FreeText
+        description: Pad each stored value so the store grows at a comparable rate on both arms.
+        value: 800
+      - name: LOGGER
+        inputType: FreeText
+        description: off - the periodic key-count scan is O(keys) and would distort timings.
+        value: off
+      - name: COMMIT_INTERVAL
+        inputType: FreeText
+        description: Checkpoint interval in seconds.
+        value: 1.0
+      - name: QUIXSTREAMS_STATE_LOG_LEVEL
+        inputType: FreeText
+        description: State-layer log level.
+        value: INFO
 
-# This section describes the Topics of the data pipeline
 topics:
   - name: raw-events
     configuration:
