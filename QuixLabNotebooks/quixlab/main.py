@@ -46,7 +46,7 @@ def top_deployments_by_cost(billing_events):
     return df
 
 
-@canvas.cell(position=(655, -492), size=(560, 420), code_height=200, viz={'type': 'line', 'x': 'event_date', 'y': ['quixlab-cell', 'quixlab-dataset', 'quixlab-notebook']})
+@canvas.cell(position=(323, -836), size=(598, 525), code_height=200, viz={'type': 'line', 'x': 'event_date', 'y': ['quixlab-cell', 'quixlab-dataset', 'quixlab-notebook']})
 def cell_2(billing_events):
     df = billing_events.copy()
     df["event_date"] = df["event_datetime"].str[:10]
