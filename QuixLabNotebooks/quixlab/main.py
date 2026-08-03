@@ -20,7 +20,7 @@ def ai_1(billing_events):
 
 @canvas.ai(position=(1171, 695), size=(560, 420), code_height=200)
 def ai_2(billing_events):
-    """Aggregate different credit_type per"""
+    """Aggregate different credit_types. Calculate sum, average, min and max."""
 
 
 if __name__ == "__main__":
