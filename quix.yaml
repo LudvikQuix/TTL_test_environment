@@ -478,49 +478,42 @@ deployments:
     variables:
       - name: input
         inputType: InputTopic
-        description: Topic with raw events (shared input across all dedup filters)
-        required: true
         value: raw-events
       - name: output
         inputType: OutputTopic
-        description: Topic with deduplicated events
-        required: true
         value: deduped-events
-      - name: VALUE_PADDING_BYTES
+      - name: STATE_DIR
         inputType: FreeText
-        description: MUST equal the state path above, or the store lands on ephemeral container disk and every restart is a cold rebuild - which hides the reopen bug entirely.
         value: /app/statecfa2
       - name: CG_PREFIX
         inputType: FreeText
-        description: Consumer-group prefix (state namespace). Per service to isolate stores.
         value: dedup-cf-a
       - name: CG_VERSION
         inputType: FreeText
-        description: Consumer-group suffix (e.g. v1). Bump for a fresh clean store, no code change.
         value: v2
       - name: TTL_MODE
         inputType: FreeText
-        description: 0 = legacy seeder (no ttl=, byte-identical to 3.23.6). 1 = TTL build (ttl= + legacy_records_ttl -> flip+backfill).
         value: 1
       - name: STATE_TTL_SECONDS
         inputType: FreeText
-        description: Per-write ttl= for new dedup entries, seconds (used when TTL_MODE=1).
         value: 3600
-      - name: LEGACY_RECORDS_TTL_SECONDS
+      - name: BLOCK_CACHE_SIZE
         inputType: FreeText
-        description: One-time backfill TTL (seconds) for pre-existing legacy records on upgrade (used when TTL_MODE=1).
-        value: 30
+        value: 33554432
+      - name: BLOCK_CACHE_PROBE_REPEAT_S
+        inputType: FreeText
+        value: 60
+      - name: VALUE_PADDING_BYTES
+        inputType: FreeText
+        value: 800
       - name: LOGGER
         inputType: FreeText
-        description: on/off. off disables the periodic status logger (skips its per-interval rocksdb key scan). Set off in production.
         value: off
-      - name: TTL_CHANGELOG_TOMBSTONES
+      - name: COMMIT_INTERVAL
         inputType: FreeText
-        description: 1 = TTL sweep also deletes expired keys from the changelog topic (compaction shrinks it). 0 = local-only sweep, changelog keeps every record.
-        value: 1
+        value: 1.0
       - name: QUIXSTREAMS_STATE_LOG_LEVEL
         inputType: FreeText
-        description: Log level for the quixstreams state layer (DEBUG shows per-chunk backfill/migration progress).
         value: INFO
   - name: Dedup CF B2 (PR1137 fixed)
     application: dedup-cf-b
