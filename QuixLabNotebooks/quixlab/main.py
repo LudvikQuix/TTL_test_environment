@@ -12,7 +12,7 @@ def billing_events():
     """)
 
 
-@canvas.ai(position=(1131, 128), size=(560, 420), code_height=200, viz={'aiMode': 'agent'})
+@canvas.ai(position=(1131, 128), size=(560, 420), code_height=200, viz={'aiMode': 'agent', 'findingsStore': 'ai_1_store'})
 def ai_1(billing_events):
     """Analyse this billing data please"""
     # ql-ai-mode: agent
@@ -38,6 +38,11 @@ def ai_2(billing_events):
     )
 
     agg
+
+
+@canvas.datastore(position=(1751, 128), size=(560, 420), code_height=120, viz={'datastore': True, 'sourceNode': 'ai_1'})
+def ai_1_store(ai_1):
+    return ql.datastore("ai_1_store")
 
 
 if __name__ == "__main__":
