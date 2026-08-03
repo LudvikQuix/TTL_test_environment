@@ -64,10 +64,15 @@ def _find_logs(state_dir):
     return sorted(found)
 
 
-def report(state_dir, tag="BLOCKCACHE"):
+def report(state_dir, tag="BLOCKCACHE", publish=None, label=""):
     """
     Print one line per store partition. Returns the number of partitions seen so
     a caller can tell "no stores yet" from "stores reporting".
+
+    ``publish``, if given, is called with a dict per partition. Quix exposes no
+    REST endpoint for runtime logs, so stdout alone is unreadable from outside
+    the container — publishing the same verdict to a topic is the only way to
+    collect this result programmatically.
     """
     logs = _find_logs(state_dir)
     if not logs:
@@ -87,17 +92,40 @@ def report(state_dir, tag="BLOCKCACHE"):
         # explicitly so the Portal log is readable without doing the arithmetic.
         degraded = any(c == 8 * 1024 * 1024 for c in uniq_caps) or "nullptr" in uniq_filters
         verdict = "DEGRADED (options dropped on reopen)" if degraded else "OK"
-        print(
+        line = (
             f"[STARTUP-{tag}] store={rel} "
             f"block_cache_capacity={uniq_caps} "
             f"filter_policy={uniq_filters} "
-            f"cf_count={len(caps)} => {verdict}",
-            flush=True,
+            f"cf_count={len(caps)} => {verdict}"
         )
+        print(line, flush=True)
+        if publish is not None:
+            try:
+                publish(
+                    {
+                        "label": label,
+                        "store": rel,
+                        "block_cache_capacity": uniq_caps,
+                        "filter_policy": uniq_filters,
+                        "cf_count": len(caps),
+                        "degraded": degraded,
+                        "verdict": verdict,
+                    }
+                )
+            except Exception as exc:  # never let reporting kill the app
+                print(f"[STARTUP-{tag}] publish failed: {exc}", flush=True)
     return seen
 
 
-def start(state_dir, tag="BLOCKCACHE", poll_s=5.0, timeout_s=600.0, repeat_s=None):
+def start(
+    state_dir,
+    tag="BLOCKCACHE",
+    poll_s=5.0,
+    timeout_s=600.0,
+    repeat_s=None,
+    publish=None,
+    label="",
+):
     """
     Wait for the first store partition to open, report once, then optionally keep
     reporting every ``repeat_s``.
@@ -109,7 +137,7 @@ def start(state_dir, tag="BLOCKCACHE", poll_s=5.0, timeout_s=600.0, repeat_s=Non
     def _run():
         deadline = time.time() + timeout_s
         while time.time() < deadline:
-            if report(state_dir, tag=tag):
+            if report(state_dir, tag=tag, publish=publish, label=label):
                 break
             time.sleep(poll_s)
         else:
@@ -123,6 +151,6 @@ def start(state_dir, tag="BLOCKCACHE", poll_s=5.0, timeout_s=600.0, repeat_s=Non
         if repeat_s:
             while True:
                 time.sleep(repeat_s)
-                report(state_dir, tag=tag)
+                report(state_dir, tag=tag, publish=publish, label=label)
 
     threading.Thread(target=_run, daemon=True).start()
