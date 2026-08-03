@@ -519,6 +519,7 @@ deployments:
     state:
       enabled: true
       size: 6
+      path: /app/state-cf-b
     variables:
       - name: input
         inputType: InputTopic
