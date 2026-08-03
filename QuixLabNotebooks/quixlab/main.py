@@ -46,10 +46,10 @@ def top_deployments_by_cost(billing_events):
     return df
 
 
-@canvas.cell(position=(656, -376), size=(560, 420), code_height=200, viz={'type': 'line', 'x': 'event_date', 'y': ['quixlab-cell', 'quixlab-dataset', 'quixlab-notebook']})
+@canvas.cell(position=(655, -492), size=(560, 420), code_height=200, viz={'type': 'line', 'x': 'event_date', 'y': ['quixlab-cell', 'quixlab-dataset', 'quixlab-notebook']})
 def cell_2(billing_events):
     df = billing_events.copy()
-    df["event_date"] = pd.to_datetime(df["event_datetime"]).dt.date
+    df["event_date"] = df["event_datetime"].str[:10]
     grouped = df.groupby(["event_date", "credit_type"])["duration_ms"].sum().reset_index()
     wide = grouped.pivot(index="event_date", columns="credit_type", values="duration_ms").reset_index()
     wide.columns.name = None
