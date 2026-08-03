@@ -13,7 +13,7 @@ from dataclasses import dataclass
 # Hive partition columns for the Lakehouse table (spec section 7.1), passed as
 # hive_columns to QuixLakeClient.insert and documented here so the layout has
 # one source.
-PARTITION_COLUMNS = ["environment_id", "deployment_id", "event_month"]
+PARTITION_COLUMNS = ["environment_id"]
 
 _TRUE = ("1", "true", "yes", "on")
 
