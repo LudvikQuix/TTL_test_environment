@@ -525,7 +525,7 @@ deployments:
         memory: 400
     state:
       enabled: true
-      size: 1
+      size: 5
       path: /app/statecfb2
     desiredStatus: Stopped
     variables:
