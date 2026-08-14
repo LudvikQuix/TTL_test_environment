@@ -533,7 +533,7 @@ deployments:
       - name: TTL_CHANGELOG_TOMBSTONES
         inputType: FreeText
         value: 1
-  - name: Path B [B1 seed v3.24.0]
+  - name: Path B [B2 v3.24.0 store -> current]
     application: dedup-cf-b
     version: latest
     deploymentType: Service
