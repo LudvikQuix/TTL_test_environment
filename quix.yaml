@@ -515,7 +515,7 @@ deployments:
       - name: QUIXSTREAMS_STATE_LOG_LEVEL
         inputType: FreeText
         value: INFO
-  - name: Migration Chain (3.23.6 -> 3.24.0 -> current)
+  - name: Migration Chain [stage1 v3.23.6 legacy seed]
     application: dedup-cf-a
     version: latest
     deploymentType: Service
@@ -561,7 +561,7 @@ deployments:
         value: 800
       - name: LOGGER
         inputType: FreeText
-        value: off
+        value: on
       - name: COMMIT_INTERVAL
         inputType: FreeText
         value: 1.0
@@ -571,6 +571,15 @@ deployments:
       - name: ARM_LABEL
         inputType: FreeText
         value: migration-chain
+      - name: STATE_SIZE_LOG_INTERVAL
+        inputType: FreeText
+        value: 60
+      - name: MAX_EVICTIONS_PER_FLUSH
+        inputType: FreeText
+        value: 200000
+      - name: LEGACY_BACKFILL_CHUNK_SIZE
+        inputType: FreeText
+        value: 200000
 
 # This section describes the Topics of the data pipeline
 topics:
