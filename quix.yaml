@@ -521,8 +521,8 @@ deployments:
     deploymentType: Service
     resources:
       limits:
-        cpu: 200
-        memory: 400
+        cpu: 1000
+        memory: 2000
     state:
       enabled: true
       size: 5
@@ -552,7 +552,7 @@ deployments:
         value: 3600
       - name: BLOCK_CACHE_SIZE
         inputType: FreeText
-        value: 33554432
+        value: 134217728
       - name: BLOCK_CACHE_PROBE_REPEAT_S
         inputType: FreeText
         value: 60
