@@ -246,6 +246,24 @@ def _periodic_status_logger():
             f"session_seen={len(_session_seen)}",
             flush=True,
         )
+        # Quix exposes no REST endpoint for runtime logs, so stdout alone cannot
+        # be read from outside the container. Publish the same numbers to the
+        # verdict topic: the key count is what a migration has to preserve across
+        # versions, so it must be observable per stage.
+        try:
+            _publish_verdict(
+                {
+                    "label": ARM_LABEL,
+                    "kind": "store-stats",
+                    "mode": "TTL" if TTL_MODE else "SEED",
+                    "cg": CONSUMER_GROUP,
+                    "bytes": size,
+                    "exact_keys": exact,
+                    "est_keys": est,
+                }
+            )
+        except Exception as exc:  # never let reporting kill the app
+            print(f"[STATE-SIZE-STABLE] publish failed: {exc}", flush=True)
 
 
 if LOGGER_ENABLED:
