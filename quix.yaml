@@ -515,7 +515,7 @@ deployments:
       - name: QUIXSTREAMS_STATE_LOG_LEVEL
         inputType: FreeText
         value: INFO
-  - name: Migration Chain [stage1 3.23.6 seed]
+  - name: Migration Chain [pathA 3.23.6 to current]
     application: dedup-cf-a
     version: latest
     deploymentType: Service
@@ -546,7 +546,7 @@ deployments:
         value: v3
       - name: TTL_MODE
         inputType: FreeText
-        value: 0
+        value: 1
       - name: STATE_TTL_SECONDS
         inputType: FreeText
         value: 3600
@@ -580,6 +580,12 @@ deployments:
       - name: LEGACY_BACKFILL_CHUNK_SIZE
         inputType: FreeText
         value: 200000
+      - name: LEGACY_RECORDS_TTL_SECONDS
+        inputType: FreeText
+        value: 3600
+      - name: TTL_CHANGELOG_TOMBSTONES
+        inputType: FreeText
+        value: 1
 
 # This section describes the Topics of the data pipeline
 topics:
