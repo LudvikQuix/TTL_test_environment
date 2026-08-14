@@ -122,11 +122,13 @@ CONSUMER_GROUP = f"{CG_PREFIX}-{CG_VERSION}"
 # passing them unconditionally would crash the app on that pin. Gate them on the
 # installed build's actual constructor signature so the SAME harness runs on
 # release/v3.24.0 (stage 2) and this build (stage 3) without a code change.
-# max_evictions_per_flush exists on BOTH pins, so it needs no gate.
+# max_evictions_per_flush must ALSO be gated: v3.23.6 predates TTL entirely and
+# has no such parameter, so passing it unconditionally crashes stage 1 of the
+# 3.23.6 -> 3.24.0 -> current migration chain.
 _supported_opts = set(inspect.signature(RocksDBOptions).parameters)
-_opts_kwargs = dict(
-    max_evictions_per_flush=MAX_EVICTIONS_PER_FLUSH,
-)
+_opts_kwargs = {}
+if "max_evictions_per_flush" in _supported_opts:
+    _opts_kwargs["max_evictions_per_flush"] = MAX_EVICTIONS_PER_FLUSH
 
 # RocksDB tuning: only override when the env var is explicitly set, so an unset
 # var inherits the library default rather than silently pinning a small value.
