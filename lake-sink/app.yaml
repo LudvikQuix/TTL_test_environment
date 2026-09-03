@@ -1,4 +1,4 @@
-name: "Lake Sink [#1143]"
+name: Lake Sink
 language: python
 variables:
   - name: input

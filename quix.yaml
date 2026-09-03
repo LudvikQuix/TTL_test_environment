@@ -105,7 +105,7 @@ deployments:
       - name: ARM_LABEL
         inputType: FreeText
         value: pathB
-  - name: "Lake Sink [#1143]"
+  - name: Lake Sink
     application: lake-sink
     version: latest
     deploymentType: Service
