@@ -112,7 +112,6 @@ topics:
     configuration:
       retentionInBytes: 314572800
   - name: deduped-events-no-ttl
-  - name: ttl-verify-input
   - name: ttl-verify-stable-out
   - name: blockcache-verdict
     configuration:
