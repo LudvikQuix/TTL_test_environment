@@ -120,7 +120,6 @@ topics:
   - name: rebalance-raw-events
     configuration:
       partitions: 8
-  - name: rebalance-feature-out
   - name: rebalance-stable-out
   - name: blockcache-verdict
     configuration:
