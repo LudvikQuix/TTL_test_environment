@@ -37,25 +37,6 @@ deployments:
         inputType: FreeText
         description: Optional integer seed for random. Set to make the sequence reproducible.
         value: 42
-  - name: TTL Verify (Stable)
-    application: ttl-verify-stable
-    version: latest
-    deploymentType: Service
-    resources:
-      limits:
-        cpu: 200
-        memory: 500
-    state:
-      enabled: true
-      size: 1
-    desiredStatus: Stopped
-    variables:
-      - name: input
-        inputType: InputTopic
-        value: ttl-verify-input
-      - name: output
-        inputType: OutputTopic
-        value: ttl-verify-stable-out
   - name: Recovery Generator
     application: recovery-generator
     version: latest
