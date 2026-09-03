@@ -117,7 +117,6 @@ topics:
   - name: ttl-verify-stable-out
   - name: recovery-output
   - name: recovery-input
-  - name: rebalance-stable-out
   - name: blockcache-verdict
     configuration:
       partitions: 1
