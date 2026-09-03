@@ -111,7 +111,6 @@ topics:
   - name: raw-events
     configuration:
       retentionInBytes: 314572800
-  - name: deduped-events
   - name: deduped-events-no-ttl
   - name: deduped-events-stable
   - name: ttl-verify-input
