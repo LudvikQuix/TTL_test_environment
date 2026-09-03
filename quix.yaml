@@ -37,37 +37,6 @@ deployments:
         inputType: FreeText
         description: Optional integer seed for random. Set to make the sequence reproducible.
         value: 42
-  - name: Recovery Generator
-    application: recovery-generator
-    version: latest
-    deploymentType: Service
-    resources:
-      limits:
-        cpu: 200
-        memory: 200
-    desiredStatus: Stopped
-    variables:
-      - name: output
-        inputType: OutputTopic
-        description: Topic to produce recovery-test messages to. Created by the app with segment.ms=60000 / retention.ms=120000.
-        required: true
-        value: recovery-input
-      - name: RATE_PER_SECOND
-        inputType: FreeText
-        description: Messages per second (sleep-paced).
-        value: 100
-      - name: PADDING_BYTES
-        inputType: FreeText
-        description: Bytes of 'x' padding per message so segments fill at a predictable rate.
-        value: 200
-      - name: KEY_COUNT
-        inputType: FreeText
-        description: Key space size; keys are key-{seq % KEY_COUNT}.
-        value: 1000
-      - name: FLIP_PROBABILITY
-        inputType: FreeText
-        description: Probability (0.0-1.0) that a key's ON/OFF status flips on a given occurrence of that key; otherwise it holds its previous status.
-        value: 0.05
   - name: Recovery Filter
     application: recovery-filter
     version: latest
