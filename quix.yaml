@@ -105,6 +105,83 @@ deployments:
       - name: ARM_LABEL
         inputType: FreeText
         value: pathB
+  - name: "Lake Sink [#1143]"
+    application: lake-sink
+    version: latest
+    deploymentType: Service
+    resources:
+      limits:
+        cpu: 500
+        memory: 1000
+    desiredStatus: Stopped
+    variables:
+      - name: input
+        inputType: InputTopic
+        description: Name of the Kafka input topic to consume from
+        required: true
+        value: deduped-events-no-ttl
+      - name: TABLE_NAME
+        inputType: FreeText
+        description: Table name for data organization and registration. Combined with TABLE_VERSION into the effective table name (e.g. ttl_events_v1).
+        value: ttl_events
+      - name: TABLE_VERSION
+        inputType: FreeText
+        description: Suffix appended to TABLE_NAME. BUMP THIS whenever HIVE_COLUMNS, TIMESTAMP_COLUMN or SORT_COLUMN change - the sink validates the partition set against the catalog spec and the on-disk Hive paths at startup and raises on a mismatch, and it writes table properties only when it CREATES the table. A layout or property change is a migration, not a tweak. Blank the value for no suffix (the bare TABLE_NAME); delete the variable to get the v1 default back.
+        value: v1
+      - name: HIVE_COLUMNS
+        inputType: FreeText
+        description: "Comma-separated list of columns for Hive partitioning (e.g. region,datacenter,hostname OR year,month,day extracted from TIMESTAMP_COLUMN). Leave empty for no Hive partitioning - every column listed here must exist in the incoming message payload, otherwise writes will fail. Prefix an entry with ~ to make it VIRTUAL (no key=value/ folder, does not split files, column kept in the parquet, indexed in .vidx sidecars) - use it for high-cardinality ids. year/month/day/hour are derived from TIMESTAMP_COLUMN and are physical-only. Changing this requires a TABLE_VERSION bump."
+        value: "year,month,day,hour,status,~order_id"
+      - name: TIMESTAMP_COLUMN
+        inputType: FreeText
+        description: Column containing timestamp values to extract year/month/day/hour from (only used when HIVE_COLUMNS includes one of those time components). Also the fallback ordering column when SORT_COLUMN is unset. The generator emits epoch milliseconds in "timestamp".
+        value: timestamp
+      - name: SORT_COLUMN
+        inputType: FreeText
+        description: Column recorded as properties.sort_column at table creation, which lakehouse compaction orders files by. Blank the value for unset, which falls back to TIMESTAMP_COLUMN; delete the variable to get the seq default back. Setting it equal to TIMESTAMP_COLUMN is indistinguishable from unset. "seq" is the process-local counter this service stamps on every record.
+        value: seq
+      - name: STATS_COLUMNS
+        inputType: FreeText
+        description: Comma-separated columns to compute per-file min/max statistics (zone maps) for, sent to the catalog as column_stats. Empty = every numeric and timestamp column of each written file, which here is timestamp plus seq. Restrict only on very wide tables.
+        value: ""
+      - name: AUTO_DISCOVER
+        inputType: FreeText
+        description: "true/false. Automatically register table in REST Catalog on first write. false leaves partition_spec, virtual_partitions, sort_column and column_stats unrecorded."
+        value: "true"
+      - name: CATALOG_NAMESPACE
+        inputType: FreeText
+        description: Catalog namespace for table registration
+        value: default
+      - name: BATCH_SIZE
+        inputType: FreeText
+        description: Number of messages to batch before writing to storage. Counts INPUT messages, not output rows.
+        value: 1000
+      - name: COMMIT_INTERVAL
+        inputType: FreeText
+        description: Kafka commit interval in seconds. Also the flush cadence, so together with BATCH_SIZE it sets the parquet file size.
+        value: 30
+      - name: CONSUMER_GROUP
+        inputType: FreeText
+        description: Kafka consumer group name. Bump it to re-sink the topic from AUTO_OFFSET_RESET (pair with a TABLE_VERSION bump to avoid duplicate rows in an existing table).
+        value: s3_direct_sink_v1.0
+      - name: AUTO_OFFSET_RESET
+        inputType: FreeText
+        description: "Where to start consuming if no offset exists: earliest or latest. earliest sinks the existing backlog on a fresh consumer group."
+        value: earliest
+      - name: LOGLEVEL
+        inputType: FreeText
+        description: "Application logging level: DEBUG, INFO, WARNING, ERROR or CRITICAL. DEBUG logs each uploaded data file and sidecar."
+        value: INFO
+      - name: MAX_WRITE_WORKERS
+        inputType: FreeText
+        description: How many files can be written in parallel to storage at once (based on partitioning + batch size)
+        value: 10
+    # Mandatory, not optional: on dev the blob bind is the injection vehicle for
+    # the WHOLE Quix__Lakehouse__* bundle (catalog URL + auth token), not just
+    # for Quix__BlobStorage__Connection__Json. Remove it and the sink boots with
+    # no catalog and records no partition_spec/properties/column_stats.
+    blobStorage:
+      bind: true
 
 # This section describes the Topics of the data pipeline
 topics:
