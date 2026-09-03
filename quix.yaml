@@ -65,13 +65,13 @@ deployments:
         value: dedup-cf-b
       - name: CG_VERSION
         inputType: FreeText
-        value: v4
+        value: v5
       - name: TTL_MODE
         inputType: FreeText
         value: 1
       - name: STATE_TTL_SECONDS
         inputType: FreeText
-        value: 3600
+        value: 600
       - name: BLOCK_CACHE_SIZE
         inputType: FreeText
         value: 134217728
