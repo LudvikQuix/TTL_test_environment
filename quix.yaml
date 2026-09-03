@@ -37,33 +37,6 @@ deployments:
         inputType: FreeText
         description: Optional integer seed for random. Set to make the sequence reproducible.
         value: 42
-  - name: Rebalance Generator
-    application: duplicate-key-generator
-    version: latest
-    deploymentType: Service
-    resources:
-      limits:
-        cpu: 200
-        memory: 200
-    desiredStatus: Stopped
-    variables:
-      - name: output
-        inputType: OutputTopic
-        description: Write-heavy keyed load for the rebalance test (8-partition topic).
-        required: true
-        value: rebalance-raw-events
-      - name: KEY_SPACE
-        inputType: FreeText
-        value: 150000
-      - name: MESSAGE_COUNT
-        inputType: FreeText
-        value: 0
-      - name: SLEEP_SECONDS
-        inputType: FreeText
-        value: 0.0001
-      - name: SEED
-        inputType: FreeText
-        value: 42
   - name: Rebalance Filter (Feature)
     application: rebalance-filter-feature
     version: latest
