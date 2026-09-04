@@ -86,6 +86,11 @@ variables:
     description: quix-streams operational lever, read by the SDK directly from the environment. "1" = on open, roll back a provisionally adopted v3.24.0 store to legacy (strip stamps, clear __ttl_enabled__) and suppress cold auto-adopt. "0" = normal. Declared here so the Portal does not drop it on redeploy.
     defaultValue: "0"
     required: false
+  - name: QUIXSTREAMS_STATE_TTL_FORCE_FLIP
+    inputType: FreeText
+    description: quix-streams operational lever (sc-74843), read by the SDK from the environment. "1" = on open, force a store that holds TTL-stamped values but no __ttl_enabled__ flag into TTL mode and persist the flag. Mutually exclusive with QUIXSTREAMS_STATE_TTL_ROLLBACK. "0" = normal.
+    defaultValue: "0"
+    required: false
 dockerfile: build/dockerfile
 runEntryPoint: main.py
 defaultFile: main.py
