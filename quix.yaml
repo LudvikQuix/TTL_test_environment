@@ -115,7 +115,7 @@ deployments:
         value: 1.0
       - name: STATE_DIR
         inputType: FreeText
-        value: /app/statecfb2
+        value: /app/statecfb2/run2
   - name: Lake Sink
     application: lake-sink
     version: latest
