@@ -14,7 +14,7 @@ deployments:
       limits:
         cpu: 200
         memory: 200
-    desiredStatus: Running
+    desiredStatus: Stopped
     variables:
       - name: output
         inputType: OutputTopic
@@ -50,7 +50,7 @@ deployments:
       enabled: true
       size: 5
       path: /app/statecfb2
-    desiredStatus: Stopped
+    desiredStatus: Running
     variables:
       - name: input
         inputType: InputTopic
@@ -115,7 +115,7 @@ deployments:
         value: /app/statecfb2
       - name: QUIXSTREAMS_STATE_TTL_ROLLBACK
         inputType: FreeText
-        value: 0
+        value: 1
       - name: COMMIT_INTERVAL
         inputType: FreeText
         description: Seconds between checkpoints. A checkpoint's cost is mostly fixed (producer flush + offset commit), so shrinking this buys no sweep throughput and starves message processing.
