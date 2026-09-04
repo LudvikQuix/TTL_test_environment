@@ -109,6 +109,12 @@ deployments:
         inputType: FreeText
         description: Records re-stamped per write-batch during the one-time legacy backfill. Bounds peak transient memory to one chunk. Library default 150000.
         value: 200000
+      - name: STATE_DIR
+        inputType: FreeText
+        value: /app/statecfb2
+      - name: QUIXSTREAMS_STATE_TTL_ROLLBACK
+        inputType: FreeText
+        value: "0"
       - name: COMMIT_INTERVAL
         inputType: FreeText
         description: Seconds between checkpoints. A checkpoint's cost is mostly fixed (producer flush + offset commit), so shrinking this buys no sweep throughput and starves message processing.

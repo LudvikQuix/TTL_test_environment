@@ -76,6 +76,16 @@ variables:
     description: Seconds between checkpoints. A checkpoint's cost is mostly fixed (producer flush + offset commit), so shrinking this buys no sweep throughput and starves message processing.
     defaultValue: "1.0"
     required: false
+  - name: STATE_DIR
+    inputType: FreeText
+    description: Explicit RocksDB state dir. Leave equal to the mounted volume (/app/statecfb2) for a WARM store; a fresh SUBDIR of the volume (e.g. /app/statecfb2/run3) forces one cold rebuild from the changelog. Declared here so the Portal does not drop it on redeploy.
+    defaultValue: /app/statecfb2
+    required: false
+  - name: QUIXSTREAMS_STATE_TTL_ROLLBACK
+    inputType: FreeText
+    description: quix-streams operational lever, read by the SDK directly from the environment. "1" = on open, roll back a provisionally adopted v3.24.0 store to legacy (strip stamps, clear __ttl_enabled__) and suppress cold auto-adopt. "0" = normal. Declared here so the Portal does not drop it on redeploy.
+    defaultValue: "0"
+    required: false
 dockerfile: build/dockerfile
 runEntryPoint: main.py
 defaultFile: main.py
