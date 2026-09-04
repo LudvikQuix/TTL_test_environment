@@ -116,13 +116,14 @@ deployments:
       - name: QUIXSTREAMS_STATE_TTL_ROLLBACK
         inputType: FreeText
         value: 0
+      - name: QUIXSTREAMS_STATE_TTL_FORCE_FLIP
+        inputType: FreeText
+        value: 1
+
       - name: COMMIT_INTERVAL
         inputType: FreeText
         description: Seconds between checkpoints. A checkpoint's cost is mostly fixed (producer flush + offset commit), so shrinking this buys no sweep throughput and starves message processing.
         value: 1.0
-      - name: QUIXSTREAMS_STATE_TTL_FORCE_FLIP
-        inputType: FreeText
-        value: 1
   - name: Lake Sink
     application: lake-sink
     version: latest
@@ -198,6 +199,13 @@ deployments:
       bind: true
 
 # This section describes the Topics of the data pipeline
+topics:
+  - name: raw-events
+    configuration:
+      partitions: 4
+      retentionInBytes: 314572800
+  - name: deduped-events-no-ttl
+
 topics:
   - name: raw-events
     configuration:
