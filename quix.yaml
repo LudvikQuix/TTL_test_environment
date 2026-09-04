@@ -14,7 +14,7 @@ deployments:
       limits:
         cpu: 200
         memory: 200
-    desiredStatus: Running
+    desiredStatus: Stopped
     variables:
       - name: output
         inputType: OutputTopic
@@ -49,7 +49,7 @@ deployments:
       enabled: true
       size: 5
       path: /app/statecfb2
-    desiredStatus: Running
+    desiredStatus: Stopped
     variables:
       - name: input
         inputType: InputTopic
@@ -72,7 +72,7 @@ deployments:
       - name: CG_VERSION
         inputType: FreeText
         description: Consumer-group suffix (e.g. v1). Bump for a fresh clean store, no code change.
-        value: v8
+        value: v9
       - name: TTL_MODE
         inputType: FreeText
         description: 0 = legacy seeder (no ttl=, byte-identical to 3.23.6). 1 = TTL build (ttl= + legacy_records_ttl -> flip+backfill).
