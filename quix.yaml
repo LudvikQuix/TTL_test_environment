@@ -49,7 +49,7 @@ deployments:
       enabled: true
       size: 5
       path: /app/statecfb2
-    desiredStatus: Stopped
+    desiredStatus: Running
     variables:
       - name: input
         inputType: InputTopic
@@ -113,7 +113,7 @@ deployments:
       limits:
         cpu: 500
         memory: 1000
-    desiredStatus: Stopped
+    desiredStatus: Running
     variables:
       - name: input
         inputType: InputTopic
@@ -130,8 +130,8 @@ deployments:
         value: v1
       - name: HIVE_COLUMNS
         inputType: FreeText
-        description: "Comma-separated list of columns for Hive partitioning (e.g. region,datacenter,hostname OR year,month,day extracted from TIMESTAMP_COLUMN). Leave empty for no Hive partitioning - every column listed here must exist in the incoming message payload, otherwise writes will fail. Prefix an entry with ~ to make it VIRTUAL (no key=value/ folder, does not split files, column kept in the parquet, indexed in .vidx sidecars) - use it for high-cardinality ids. year/month/day/hour are derived from TIMESTAMP_COLUMN and are physical-only. Changing this requires a TABLE_VERSION bump."
-        value: "year,month,day,hour,status,~order_id"
+        description: Comma-separated list of columns for Hive partitioning (e.g. region,datacenter,hostname OR year,month,day extracted from TIMESTAMP_COLUMN). Leave empty for no Hive partitioning - every column listed here must exist in the incoming message payload, otherwise writes will fail. Prefix an entry with ~ to make it VIRTUAL (no key=value/ folder, does not split files, column kept in the parquet, indexed in .vidx sidecars) - use it for high-cardinality ids. year/month/day/hour are derived from TIMESTAMP_COLUMN and are physical-only. Changing this requires a TABLE_VERSION bump.
+        value: year,month,day,hour,status,~order_id
       - name: TIMESTAMP_COLUMN
         inputType: FreeText
         description: Column containing timestamp values to extract year/month/day/hour from (only used when HIVE_COLUMNS includes one of those time components). Also the fallback ordering column when SORT_COLUMN is unset. The generator emits epoch milliseconds in "timestamp".
@@ -143,11 +143,11 @@ deployments:
       - name: STATS_COLUMNS
         inputType: FreeText
         description: Comma-separated columns to compute per-file min/max statistics (zone maps) for, sent to the catalog as column_stats. Empty = every numeric and timestamp column of each written file, which here is timestamp plus seq. Restrict only on very wide tables.
-        value: ""
+        value: ''
       - name: AUTO_DISCOVER
         inputType: FreeText
-        description: "true/false. Automatically register table in REST Catalog on first write. false leaves partition_spec, virtual_partitions, sort_column and column_stats unrecorded."
-        value: "true"
+        description: true/false. Automatically register table in REST Catalog on first write. false leaves partition_spec, virtual_partitions, sort_column and column_stats unrecorded.
+        value: true
       - name: CATALOG_NAMESPACE
         inputType: FreeText
         description: Catalog namespace for table registration
@@ -166,20 +166,16 @@ deployments:
         value: s3_direct_sink_v1.0
       - name: AUTO_OFFSET_RESET
         inputType: FreeText
-        description: "Where to start consuming if no offset exists: earliest or latest. earliest sinks the existing backlog on a fresh consumer group."
+        description: 'Where to start consuming if no offset exists: earliest or latest. earliest sinks the existing backlog on a fresh consumer group.'
         value: earliest
       - name: LOGLEVEL
         inputType: FreeText
-        description: "Application logging level: DEBUG, INFO, WARNING, ERROR or CRITICAL. DEBUG logs each uploaded data file and sidecar."
+        description: 'Application logging level: DEBUG, INFO, WARNING, ERROR or CRITICAL. DEBUG logs each uploaded data file and sidecar.'
         value: INFO
       - name: MAX_WRITE_WORKERS
         inputType: FreeText
         description: How many files can be written in parallel to storage at once (based on partitioning + batch size)
         value: 10
-    # Mandatory, not optional: on dev the blob bind is the injection vehicle for
-    # the WHOLE Quix__Lakehouse__* bundle (catalog URL + auth token), not just
-    # for Quix__BlobStorage__Connection__Json. Remove it and the sink boots with
-    # no catalog and records no partition_spec/properties/column_stats.
     blobStorage:
       bind: true
 
