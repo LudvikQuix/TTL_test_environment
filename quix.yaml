@@ -14,7 +14,7 @@ deployments:
       limits:
         cpu: 200
         memory: 200
-    desiredStatus: Stopped
+    desiredStatus: Running
     variables:
       - name: output
         inputType: OutputTopic
@@ -49,7 +49,7 @@ deployments:
       enabled: true
       size: 5
       path: /app/statecfb2
-    desiredStatus: Stopped
+    desiredStatus: Running
     variables:
       - name: input
         inputType: InputTopic
@@ -72,11 +72,11 @@ deployments:
       - name: CG_VERSION
         inputType: FreeText
         description: Consumer-group suffix (e.g. v1). Bump for a fresh clean store, no code change.
-        value: v5
+        value: v6
       - name: TTL_MODE
         inputType: FreeText
         description: 0 = legacy seeder (no ttl=, byte-identical to 3.23.6). 1 = TTL build (ttl= + legacy_records_ttl -> flip+backfill).
-        value: 1
+        value: 0
       - name: STATE_TTL_SECONDS
         inputType: FreeText
         description: Per-write ttl= for new dedup entries, seconds (used when TTL_MODE=1).
@@ -96,7 +96,7 @@ deployments:
       - name: QUIXSTREAMS_STATE_LOG_LEVEL
         inputType: FreeText
         description: Log level for the quixstreams state layer (DEBUG shows per-chunk backfill/migration progress).
-        value: INFO
+        value: DEBUG
       - name: STATE_SIZE_LOG_INTERVAL
         inputType: FreeText
         description: Seconds between periodic [STATE-SIZE-STABLE] status lines (when LOGGER=on).
@@ -113,6 +113,9 @@ deployments:
         inputType: FreeText
         description: Seconds between checkpoints. A checkpoint's cost is mostly fixed (producer flush + offset commit), so shrinking this buys no sweep throughput and starves message processing.
         value: 1.0
+      - name: STATE_DIR
+        inputType: FreeText
+        value: /app/statecfb2
   - name: Lake Sink
     application: lake-sink
     version: latest
