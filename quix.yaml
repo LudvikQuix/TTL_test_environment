@@ -14,7 +14,7 @@ deployments:
       limits:
         cpu: 200
         memory: 200
-    desiredStatus: Running
+    desiredStatus: Stopped
     variables:
       - name: output
         inputType: OutputTopic
@@ -96,7 +96,7 @@ deployments:
       - name: QUIXSTREAMS_STATE_LOG_LEVEL
         inputType: FreeText
         description: Log level for the quixstreams state layer (DEBUG shows per-chunk backfill/migration progress).
-        value: INFO
+        value: DEBUG
       - name: STATE_SIZE_LOG_INTERVAL
         inputType: FreeText
         description: Seconds between periodic [STATE-SIZE-STABLE] status lines (when LOGGER=on).
