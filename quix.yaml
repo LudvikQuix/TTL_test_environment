@@ -198,6 +198,7 @@ deployments:
 topics:
   - name: raw-events
     configuration:
+      partitions: 2
       retentionInBytes: 314572800
   - name: deduped-events-no-ttl
   - name: blockcache-verdict
