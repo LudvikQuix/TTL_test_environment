@@ -45,12 +45,12 @@ deployments:
       limits:
         cpu: 1000
         memory: 2000
-      replicas: 2
+      replicas: 4
     state:
       enabled: true
       size: 5
       path: /app/statecfb2
-    desiredStatus: Running
+    desiredStatus: Stopped
     variables:
       - name: input
         inputType: InputTopic
