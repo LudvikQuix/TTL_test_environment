@@ -72,7 +72,6 @@ deployments:
         value: dedup-cf-b
       - name: CG_VERSION
         inputType: FreeText
-        description: Consumer-group suffix (e.g. v1). Bump for a fresh clean store, no code change.
         value: v11
       - name: TTL_MODE
         inputType: FreeText
@@ -80,7 +79,6 @@ deployments:
         value: 1
       - name: STATE_TTL_SECONDS
         inputType: FreeText
-        description: Per-write ttl= for new dedup entries, seconds (used when TTL_MODE=1).
         value: 3600
       - name: LEGACY_RECORDS_TTL_SECONDS
         inputType: FreeText
@@ -96,7 +94,6 @@ deployments:
         value: 1
       - name: QUIXSTREAMS_STATE_LOG_LEVEL
         inputType: FreeText
-        description: Log level for the quixstreams state layer (DEBUG shows per-chunk backfill/migration progress).
         value: DEBUG
       - name: STATE_SIZE_LOG_INTERVAL
         inputType: FreeText
@@ -120,24 +117,9 @@ deployments:
         inputType: FreeText
         description: Seconds between checkpoints. A checkpoint's cost is mostly fixed (producer flush + offset commit), so shrinking this buys no sweep throughput and starves message processing.
         value: 1.0
-      - name: CG_VERSION
-        inputType: FreeText
-        value: v11
-      - name: STATE_DIR
-        inputType: FreeText
-        value: /app/statecfb2
       - name: QUIXSTREAMS_STATE_TTL_FORCE_FLIP
         inputType: FreeText
         value: "0"
-      - name: STATE_TTL_SECONDS
-        inputType: FreeText
-        value: 3600
-      - name: QUIXSTREAMS_STATE_LOG_LEVEL
-        inputType: FreeText
-        value: DEBUG
-      - name: QUIXSTREAMS_STATE_TTL_FORCE_FLIP
-        inputType: FreeText
-        value: 0
   - name: Lake Sink
     application: lake-sink
     version: latest
@@ -213,6 +195,13 @@ deployments:
       bind: true
 
 # This section describes the Topics of the data pipeline
+topics:
+  - name: raw-events
+    configuration:
+      partitions: 4
+      retentionInBytes: 314572800
+  - name: deduped-events-no-ttl
+
 topics:
   - name: raw-events
     configuration:
