@@ -115,7 +115,7 @@ deployments:
         value: /app/statecfb2
       - name: QUIXSTREAMS_STATE_TTL_ROLLBACK
         inputType: FreeText
-        value: 1
+        value: 0
       - name: COMMIT_INTERVAL
         inputType: FreeText
         description: Seconds between checkpoints. A checkpoint's cost is mostly fixed (producer flush + offset commit), so shrinking this buys no sweep throughput and starves message processing.
