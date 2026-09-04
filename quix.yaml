@@ -72,6 +72,7 @@ deployments:
         value: dedup-cf-b
       - name: CG_VERSION
         inputType: FreeText
+        description: Consumer-group suffix (e.g. v1). Bump for a fresh clean store, no code change.
         value: v11
       - name: TTL_MODE
         inputType: FreeText
@@ -79,6 +80,7 @@ deployments:
         value: 1
       - name: STATE_TTL_SECONDS
         inputType: FreeText
+        description: Per-write ttl= for new dedup entries, seconds (used when TTL_MODE=1).
         value: 3600
       - name: LEGACY_RECORDS_TTL_SECONDS
         inputType: FreeText
@@ -94,6 +96,7 @@ deployments:
         value: 1
       - name: QUIXSTREAMS_STATE_LOG_LEVEL
         inputType: FreeText
+        description: Log level for the quixstreams state layer (DEBUG shows per-chunk backfill/migration progress).
         value: DEBUG
       - name: STATE_SIZE_LOG_INTERVAL
         inputType: FreeText
@@ -107,19 +110,22 @@ deployments:
         inputType: FreeText
         description: Records re-stamped per write-batch during the one-time legacy backfill. Bounds peak transient memory to one chunk. Library default 150000.
         value: 200000
-      - name: STATE_DIR
-        inputType: FreeText
-        value: /app/statecfb2
-      - name: QUIXSTREAMS_STATE_TTL_ROLLBACK
-        inputType: FreeText
-        value: 0
       - name: COMMIT_INTERVAL
         inputType: FreeText
         description: Seconds between checkpoints. A checkpoint's cost is mostly fixed (producer flush + offset commit), so shrinking this buys no sweep throughput and starves message processing.
         value: 1.0
+      - name: STATE_DIR
+        inputType: FreeText
+        description: Explicit RocksDB state dir. Leave equal to the mounted volume (/app/statecfb2) for a WARM store; a fresh SUBDIR of the volume (e.g. /app/statecfb2/run3) forces one cold rebuild from the changelog. Declared here so the Portal does not drop it on redeploy.
+        value: /app/statecfb2
+      - name: QUIXSTREAMS_STATE_TTL_ROLLBACK
+        inputType: FreeText
+        description: quix-streams operational lever, read by the SDK directly from the environment. "1" = on open, roll back a provisionally adopted v3.24.0 store to legacy (strip stamps, clear __ttl_enabled__) and suppress cold auto-adopt. "0" = normal. Declared here so the Portal does not drop it on redeploy.
+        value: 0
       - name: QUIXSTREAMS_STATE_TTL_FORCE_FLIP
         inputType: FreeText
-        value: "0"
+        description: quix-streams operational lever (sc-74843), read by the SDK from the environment. "1" = on open, force a store that holds TTL-stamped values but no __ttl_enabled__ flag into TTL mode and persist the flag. Mutually exclusive with QUIXSTREAMS_STATE_TTL_ROLLBACK. "0" = normal.
+        value: 0
   - name: Lake Sink
     application: lake-sink
     version: latest
@@ -195,13 +201,6 @@ deployments:
       bind: true
 
 # This section describes the Topics of the data pipeline
-topics:
-  - name: raw-events
-    configuration:
-      partitions: 4
-      retentionInBytes: 314572800
-  - name: deduped-events-no-ttl
-
 topics:
   - name: raw-events
     configuration:
