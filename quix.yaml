@@ -14,7 +14,7 @@ deployments:
       limits:
         cpu: 200
         memory: 200
-    desiredStatus: Running
+    desiredStatus: Stopped
     variables:
       - name: output
         inputType: OutputTopic
@@ -49,7 +49,7 @@ deployments:
       enabled: true
       size: 5
       path: /app/statecfb2
-    desiredStatus: Running
+    desiredStatus: Stopped
     variables:
       - name: input
         inputType: InputTopic
@@ -96,7 +96,7 @@ deployments:
       - name: QUIXSTREAMS_STATE_LOG_LEVEL
         inputType: FreeText
         description: Log level for the quixstreams state layer (DEBUG shows per-chunk backfill/migration progress).
-        value: DEBUG
+        value: INFO
       - name: STATE_SIZE_LOG_INTERVAL
         inputType: FreeText
         description: Seconds between periodic [STATE-SIZE-STABLE] status lines (when LOGGER=on).
@@ -113,9 +113,6 @@ deployments:
         inputType: FreeText
         description: Seconds between checkpoints. A checkpoint's cost is mostly fixed (producer flush + offset commit), so shrinking this buys no sweep throughput and starves message processing.
         value: 1.0
-      - name: STATE_DIR
-        inputType: FreeText
-        value: /app/statecfb2/run2
   - name: Lake Sink
     application: lake-sink
     version: latest
@@ -124,7 +121,7 @@ deployments:
       limits:
         cpu: 500
         memory: 1000
-    desiredStatus: Running
+    desiredStatus: Stopped
     variables:
       - name: input
         inputType: InputTopic
