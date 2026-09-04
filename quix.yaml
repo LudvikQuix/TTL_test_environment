@@ -14,7 +14,7 @@ deployments:
       limits:
         cpu: 200
         memory: 200
-    desiredStatus: Stopped
+    desiredStatus: Running
     variables:
       - name: output
         inputType: OutputTopic
@@ -45,11 +45,12 @@ deployments:
       limits:
         cpu: 1000
         memory: 2000
+      replicas: 2
     state:
       enabled: true
       size: 5
       path: /app/statecfb2
-    desiredStatus: Stopped
+    desiredStatus: Running
     variables:
       - name: input
         inputType: InputTopic
