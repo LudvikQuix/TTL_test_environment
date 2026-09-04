@@ -50,7 +50,7 @@ deployments:
       enabled: true
       size: 5
       path: /app/statecfb2
-    desiredStatus: Stopped
+    desiredStatus: Running
     variables:
       - name: input
         inputType: InputTopic
@@ -112,7 +112,7 @@ deployments:
         value: 200000
       - name: STATE_DIR
         inputType: FreeText
-        value: /app/statecfb2
+        value: /app/statecfb2/run4
       - name: QUIXSTREAMS_STATE_TTL_ROLLBACK
         inputType: FreeText
         value: 0
