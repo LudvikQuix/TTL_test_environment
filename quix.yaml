@@ -72,7 +72,7 @@ deployments:
       - name: CG_VERSION
         inputType: FreeText
         description: Consumer-group suffix (e.g. v1). Bump for a fresh clean store, no code change.
-        value: v7
+        value: v8
       - name: TTL_MODE
         inputType: FreeText
         description: 0 = legacy seeder (no ttl=, byte-identical to 3.23.6). 1 = TTL build (ttl= + legacy_records_ttl -> flip+backfill).
@@ -80,7 +80,7 @@ deployments:
       - name: STATE_TTL_SECONDS
         inputType: FreeText
         description: Per-write ttl= for new dedup entries, seconds (used when TTL_MODE=1).
-        value: 600
+        value: 3600
       - name: LEGACY_RECORDS_TTL_SECONDS
         inputType: FreeText
         description: One-time backfill TTL (seconds) for pre-existing legacy records on upgrade (used when TTL_MODE=1).
@@ -111,7 +111,7 @@ deployments:
         value: 200000
       - name: STATE_DIR
         inputType: FreeText
-        value: /app/statecfb2/run3
+        value: /app/statecfb2
       - name: QUIXSTREAMS_STATE_TTL_ROLLBACK
         inputType: FreeText
         value: 0
