@@ -49,62 +49,70 @@ deployments:
       enabled: true
       size: 5
       path: /app/statecfb2
-    desiredStatus: Running
+    desiredStatus: Stopped
     variables:
       - name: input
         inputType: InputTopic
+        description: Topic with raw events (shared input across all dedup filters)
+        required: true
         value: raw-events
       - name: output
         inputType: OutputTopic
+        description: Topic with deduplicated events
+        required: true
         value: deduped-events-no-ttl
-      - name: STATE_DIR
+      - name: VALUE_PADDING_BYTES
         inputType: FreeText
-        value: /app/statecfb2
+        description: Pad each stored value with this many bytes (apples-to-apples across filters).
+        value: 800
       - name: CG_PREFIX
         inputType: FreeText
+        description: Consumer-group prefix (state namespace). Per service to isolate stores.
         value: dedup-cf-b
       - name: CG_VERSION
         inputType: FreeText
+        description: Consumer-group suffix (e.g. v1). Bump for a fresh clean store, no code change.
         value: v5
       - name: TTL_MODE
         inputType: FreeText
+        description: 0 = legacy seeder (no ttl=, byte-identical to 3.23.6). 1 = TTL build (ttl= + legacy_records_ttl -> flip+backfill).
         value: 1
       - name: STATE_TTL_SECONDS
         inputType: FreeText
+        description: Per-write ttl= for new dedup entries, seconds (used when TTL_MODE=1).
         value: 600
-      - name: BLOCK_CACHE_SIZE
+      - name: LEGACY_RECORDS_TTL_SECONDS
         inputType: FreeText
-        value: 134217728
-      - name: BLOCK_CACHE_PROBE_REPEAT_S
-        inputType: FreeText
-        value: 60
-      - name: VALUE_PADDING_BYTES
-        inputType: FreeText
-        value: 800
+        description: One-time backfill TTL (seconds) for pre-existing legacy records on upgrade (used when TTL_MODE=1).
+        value: 3600
       - name: LOGGER
         inputType: FreeText
+        description: on/off. off disables the periodic status logger (skips its per-interval rocksdb key scan). Set off in production.
         value: on
-      - name: COMMIT_INTERVAL
+      - name: TTL_CHANGELOG_TOMBSTONES
         inputType: FreeText
-        value: 1.0
+        description: 1 = TTL sweep also deletes expired keys from the changelog topic (compaction shrinks it). 0 = local-only sweep, changelog keeps every record.
+        value: 1
       - name: QUIXSTREAMS_STATE_LOG_LEVEL
         inputType: FreeText
+        description: Log level for the quixstreams state layer (DEBUG shows per-chunk backfill/migration progress).
         value: INFO
       - name: STATE_SIZE_LOG_INTERVAL
         inputType: FreeText
+        description: Seconds between periodic [STATE-SIZE-STABLE] status lines (when LOGGER=on).
         value: 60
-      - name: LEGACY_RECORDS_TTL_SECONDS
-        inputType: FreeText
-        value: 3600
       - name: MAX_EVICTIONS_PER_FLUSH
         inputType: FreeText
+        description: 'TTL sweep budget: expired keys evicted per checkpoint. The throughput dial - raise this, not the commit interval. Library default 150000.'
         value: 200000
       - name: LEGACY_BACKFILL_CHUNK_SIZE
         inputType: FreeText
+        description: Records re-stamped per write-batch during the one-time legacy backfill. Bounds peak transient memory to one chunk. Library default 150000.
         value: 200000
-      - name: ARM_LABEL
+      - name: COMMIT_INTERVAL
         inputType: FreeText
-        value: pathB
+        description: Seconds between checkpoints. A checkpoint's cost is mostly fixed (producer flush + offset commit), so shrinking this buys no sweep throughput and starves message processing.
+        value: 1.0
   - name: Lake Sink
     application: lake-sink
     version: latest
