@@ -73,7 +73,7 @@ deployments:
       - name: CG_VERSION
         inputType: FreeText
         description: Consumer-group suffix (e.g. v1). Bump for a fresh clean store, no code change.
-        value: v9
+        value: v10
       - name: TTL_MODE
         inputType: FreeText
         description: 0 = legacy seeder (no ttl=, byte-identical to 3.23.6). 1 = TTL build (ttl= + legacy_records_ttl -> flip+backfill).
@@ -120,6 +120,9 @@ deployments:
         inputType: FreeText
         description: Seconds between checkpoints. A checkpoint's cost is mostly fixed (producer flush + offset commit), so shrinking this buys no sweep throughput and starves message processing.
         value: 1.0
+      - name: QUIXSTREAMS_STATE_TTL_FORCE_FLIP
+        inputType: FreeText
+        value: 0
   - name: Lake Sink
     application: lake-sink
     version: latest
