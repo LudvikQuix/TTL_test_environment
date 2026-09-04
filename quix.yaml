@@ -50,7 +50,7 @@ deployments:
       enabled: true
       size: 5
       path: /app/statecfb2
-    desiredStatus: Stopped
+    desiredStatus: Running
     variables:
       - name: input
         inputType: InputTopic
