@@ -111,7 +111,7 @@ deployments:
         value: 200000
       - name: STATE_DIR
         inputType: FreeText
-        value: /app/statecfb2
+        value: /app/statecfb2/run3
       - name: QUIXSTREAMS_STATE_TTL_ROLLBACK
         inputType: FreeText
         value: 0
