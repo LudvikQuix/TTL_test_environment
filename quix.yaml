@@ -44,7 +44,7 @@ deployments:
     resources:
       limits:
         cpu: 1000
-        memory: 2000
+        memory: 5000
       replicas: 4
     state:
       enabled: true
