@@ -32,7 +32,7 @@ deployments:
       - name: SLEEP_SECONDS
         inputType: FreeText
         description: Delay between messages in seconds. Default 0.01 = ~100 msg/s.
-        value: 0.001
+        value: 1
       - name: SEED
         inputType: FreeText
         description: Optional integer seed for random. Set to make the sequence reproducible.
@@ -139,7 +139,7 @@ deployments:
       enabled: true
       size: 5
       path: /app/statecfa
-    desiredStatus: Stopped
+    desiredStatus: Running
     variables:
       - name: input
         inputType: InputTopic
