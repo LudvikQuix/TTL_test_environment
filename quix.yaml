@@ -49,7 +49,7 @@ deployments:
     state:
       enabled: true
       size: 5
-      path: /app/statecfb5
+      path: /app/statecfb6
     desiredStatus: Stopped
     variables:
       - name: input
@@ -117,7 +117,7 @@ deployments:
       - name: STATE_DIR
         inputType: FreeText
         description: Explicit RocksDB state dir. Leave equal to the mounted volume (/app/statecfb2) for a WARM store; a fresh SUBDIR of the volume (e.g. /app/statecfb2/run3) forces one cold rebuild from the changelog. Declared here so the Portal does not drop it on redeploy.
-        value: /app/statecfb5
+        value: /app/statecfb6
       - name: QUIXSTREAMS_STATE_TTL_ROLLBACK
         inputType: FreeText
         description: quix-streams operational lever, read by the SDK directly from the environment. "1" = on open, roll back a provisionally adopted v3.24.0 store to legacy (strip stamps, clear __ttl_enabled__) and suppress cold auto-adopt. "0" = normal. Declared here so the Portal does not drop it on redeploy.
