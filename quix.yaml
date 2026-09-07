@@ -14,7 +14,7 @@ deployments:
       limits:
         cpu: 200
         memory: 200
-    desiredStatus: Running
+    desiredStatus: Stopped
     variables:
       - name: output
         inputType: OutputTopic
@@ -139,7 +139,7 @@ deployments:
       enabled: true
       size: 5
       path: /app/statecfa
-    desiredStatus: Running
+    desiredStatus: Stopped
     variables:
       - name: input
         inputType: InputTopic
