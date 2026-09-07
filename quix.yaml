@@ -50,7 +50,7 @@ deployments:
       enabled: true
       size: 5
       path: /app/statecfb6
-    desiredStatus: Stopped
+    desiredStatus: Running
     variables:
       - name: input
         inputType: InputTopic
@@ -125,7 +125,7 @@ deployments:
       - name: QUIXSTREAMS_STATE_TTL_FORCE_FLIP
         inputType: FreeText
         description: quix-streams operational lever (sc-74843), read by the SDK from the environment. "1" = on open, force a store that holds TTL-stamped values but no __ttl_enabled__ flag into TTL mode and persist the flag. Mutually exclusive with QUIXSTREAMS_STATE_TTL_ROLLBACK. "0" = normal.
-        value: 0
+        value: 1
   - name: Path A control v3-24-0
     application: dedup-cf-a
     version: latest
