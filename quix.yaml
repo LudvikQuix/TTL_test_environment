@@ -237,7 +237,7 @@ deployments:
       - name: TABLE_VERSION
         inputType: FreeText
         description: Suffix appended to TABLE_NAME. BUMP THIS whenever HIVE_COLUMNS, TIMESTAMP_COLUMN or SORT_COLUMN change - the sink validates the partition set against the catalog spec and the on-disk Hive paths at startup and raises on a mismatch, and it writes table properties only when it CREATES the table. A layout or property change is a migration, not a tweak. Blank the value for no suffix (the bare TABLE_NAME); delete the variable to get the v1 default back.
-        value: v1
+        value: v2
       - name: HIVE_COLUMNS
         inputType: FreeText
         description: Comma-separated list of columns for Hive partitioning (e.g. region,datacenter,hostname OR year,month,day extracted from TIMESTAMP_COLUMN). Leave empty for no Hive partitioning - every column listed here must exist in the incoming message payload, otherwise writes will fail. Prefix an entry with ~ to make it VIRTUAL (no key=value/ folder, does not split files, column kept in the parquet, indexed in .vidx sidecars) - use it for high-cardinality ids. year/month/day/hour are derived from TIMESTAMP_COLUMN and are physical-only. Changing this requires a TABLE_VERSION bump.
