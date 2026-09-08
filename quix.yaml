@@ -273,7 +273,7 @@ deployments:
       - name: CONSUMER_GROUP
         inputType: FreeText
         description: Kafka consumer group name. Bump it to re-sink the topic from AUTO_OFFSET_RESET (pair with a TABLE_VERSION bump to avoid duplicate rows in an existing table).
-        value: s3_direct_sink_v1.0
+        value: s3_direct_sink_v1.1
       - name: AUTO_OFFSET_RESET
         inputType: FreeText
         description: 'Where to start consuming if no offset exists: earliest or latest. earliest sinks the existing backlog on a fresh consumer group.'
