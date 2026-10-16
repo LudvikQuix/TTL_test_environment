@@ -14,7 +14,7 @@ deployments:
       limits:
         cpu: 200
         memory: 200
-    desiredStatus: Running
+    desiredStatus: Stopped
     variables:
       - name: output
         inputType: OutputTopic
@@ -49,8 +49,8 @@ deployments:
     state:
       enabled: true
       size: 5
-      path: /app/stateTest2
-    desiredStatus: Running
+      path: /app/stateTest1
+    desiredStatus: Stopped
     variables:
       - name: input
         inputType: InputTopic
@@ -73,7 +73,7 @@ deployments:
       - name: CG_VERSION
         inputType: FreeText
         description: Consumer-group suffix (e.g. v1). Bump for a fresh clean store, no code change.
-        value: v17
+        value: v16
       - name: TTL_MODE
         inputType: FreeText
         description: 0 = legacy seeder (no ttl=, byte-identical to 3.23.6). 1 = TTL build (ttl= + legacy_records_ttl -> flip+backfill).
@@ -81,11 +81,11 @@ deployments:
       - name: STATE_TTL_SECONDS
         inputType: FreeText
         description: Per-write ttl= for new dedup entries, seconds (used when TTL_MODE=1).
-        value: 5
+        value: 120
       - name: LEGACY_RECORDS_TTL_SECONDS
         inputType: FreeText
         description: One-time backfill TTL (seconds) for pre-existing legacy records on upgrade (used when TTL_MODE=1).
-        value: 5
+        value: 120
       - name: LOGGER
         inputType: FreeText
         description: on/off. off disables the periodic status logger (skips its per-interval rocksdb key scan). Set off in production.
@@ -117,7 +117,7 @@ deployments:
       - name: STATE_DIR
         inputType: FreeText
         description: Explicit RocksDB state dir. Leave equal to the mounted volume (/app/statecfb2) for a WARM store; a fresh SUBDIR of the volume (e.g. /app/statecfb2/run3) forces one cold rebuild from the changelog. Declared here so the Portal does not drop it on redeploy.
-        value: /app/stateTest2
+        value: /app/stateTest1/runPoison
       - name: QUIXSTREAMS_STATE_TTL_ROLLBACK
         inputType: FreeText
         description: quix-streams operational lever, read by the SDK directly from the environment. "1" = on open, roll back a provisionally adopted v3.24.0 store to legacy (strip stamps, clear __ttl_enabled__) and suppress cold auto-adopt. "0" = normal. Declared here so the Portal does not drop it on redeploy.
@@ -139,7 +139,7 @@ deployments:
       enabled: true
       size: 5
       path: /app/statecfa
-    desiredStatus: Running
+    desiredStatus: Stopped
     variables:
       - name: input
         inputType: InputTopic
